@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>圖片拖曳鏡射工具 (Web版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f0f2f5; }
+        .drag-active { border-color: #3b82f6 !important; background-color: #eff6ff !important; }
+        canvas { max-width: 100%; height: auto; object-fit: contain; }
+    </style>
+</head>
+<body>
+
+    <div class="min-h-screen flex flex-col items-center justify-center p-4">
+        
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-slate-800 mb-2">
+                <i class="fa-solid fa-right-left text-green-600 mr-2"></i>圖片鏡射翻轉工具
+            </h1>
+            <p class="text-slate-500">拖曳圖片，一鍵左右翻轉並高畫質下載</p>
+        </div>
+
+        <!-- Main Workspace -->
+        <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-200 w-full max-w-6xl">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                
+                <!-- Left: Input / Original -->
+                <div class="flex flex-col h-full">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="font-bold text-slate-700">1. 原始圖片</h2>
+                        <button onclick="document.getElementById('file-input').click()" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                            重新上傳
+                        </button>
+                    </div>
+                    
+                    <div id="drop-zone" class="flex-grow border-2 border-dashed border-slate-300 rounded-xl min-h-[400px] flex flex-col items-center justify-center bg-slate-50 cursor-pointer transition-colors relative overflow-hidden group">
+                        <input type="file" id="file-input" accept="image/*" class="hidden">
+                        
+                        <!-- Empty State -->
+                        <div id="empty-state" class="text-center p-6">
+                            <div class="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400 text-2xl group-hover:bg-blue-100 group-hover:text-blue-500 transition-colors">
+                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                            </div>
+                            <p class="text-slate-600 font-medium">點擊或拖曳圖片至此</p>
+                            <p class="text-xs text-slate-400 mt-1">支援 JPG, PNG, WebP</p>
+                        </div>
+
+                        <!-- Preview Image (Original) -->
+                        <img id="original-preview" class="hidden max-h-[400px] max-w-full object-contain shadow-sm">
+                    </div>
+                </div>
+
+                <!-- Right: Output / Mirrored -->
+                <div class="flex flex-col h-full">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="font-bold text-slate-700">2. 鏡射結果</h2>
+                        <div id="action-buttons" class="flex gap-2 opacity-50 pointer-events-none transition-opacity">
+                            <button id="mirror-btn" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors">
+                                <i class="fa-solid fa-retweet mr-1"></i> 執行翻轉
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="result-zone" class="flex-grow border border-slate-200 rounded-xl min-h-[400px] flex items-center justify-center bg-slate-50/50 relative overflow-hidden">
+                        <p id="result-placeholder" class="text-slate-400 text-sm">等待處理...</p>
+                        <!-- Canvas for rendering output -->
+                        <canvas id="canvas-output" class="hidden shadow-sm"></canvas>
+                    </div>
+
+                    <!-- Download Section -->
+                    <button id="download-btn" disabled class="w-full mt-4 bg-slate-200 text-slate-400 font-bold py-3 px-4 rounded-lg flex items-center justify-center transition-all disabled:cursor-not-allowed hover:bg-blue-600 hover:text-white hover:shadow-lg">
+                        <i class="fa-solid fa-download mr-2"></i> 下載鏡射圖片
+                    </button>
+                </div>
+            </div>
+
+        </div>
+        
+        <div class="mt-8 text-center">
+            <a href="index.html" class="text-slate-500 hover:text-slate-800 text-sm font-medium inline-flex items-center transition-colors">
+                <i class="fa-solid fa-arrow-left mr-2"></i> 回到工具箱首頁
+            </a>
+        </div>
+
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const emptyState = document.getElementById('empty-state');
+        const originalPreview = document.getElementById('original-preview');
+        const mirrorBtn = document.getElementById('mirror-btn');
+        const actionButtons = document.getElementById('action-buttons');
+        const resultZone = document.getElementById('result-zone');
+        const resultPlaceholder = document.getElementById('result-placeholder');
+        const canvasOutput = document.getElementById('canvas-output');
+        const downloadBtn = document.getElementById('download-btn');
+
+        let originalImage = new Image();
+        let isImageLoaded = false;
+        let originalFileName = "image.png";
+
+        // --- Event Listeners ---
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+
+        dropZone.addEventListener('dragenter', () => dropZone.classList.add('drag-active'));
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-active'));
+        dropZone.addEventListener('drop', (e) => {
+            dropZone.classList.remove('drag-active');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+        mirrorBtn.addEventListener('click', performMirror);
+        
+        downloadBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'mirrored_' + originalFileName;
+            link.href = canvasOutput.toDataURL(fileInput.files[0]?.type || 'image/png', 1.0);
+            link.click();
+        });
+
+        // --- Functions ---
+        function handleFiles(files) {
+            if (files.length === 0) return;
+            const file = files[0];
+            if (!file.type.startsWith('image/')) {
+                alert('請上傳圖片檔案');
+                return;
+            }
+
+            originalFileName = file.name;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                originalImage = new Image();
+                originalImage.onload = () => {
+                    // Show Original
+                    originalPreview.src = originalImage.src;
+                    originalPreview.classList.remove('hidden');
+                    emptyState.classList.add('hidden');
+                    
+                    // Enable UI
+                    actionButtons.classList.remove('opacity-50', 'pointer-events-none');
+                    isImageLoaded = true;
+                    
+                    // Auto mirror for convenience? Or let user click?
+                    // Let's mimic original app: User clicks or we can auto-trigger.
+                    // Let's auto-trigger for better UX.
+                    performMirror(); 
+                };
+                originalImage.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function performMirror() {
+            if (!isImageLoaded) return;
+
+            const ctx = canvasOutput.getContext('2d');
+            
+            // Set canvas size to match image
+            canvasOutput.width = originalImage.width;
+            canvasOutput.height = originalImage.height;
+
+            // Flip Logic
+            ctx.save();
+            ctx.translate(originalImage.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(originalImage, 0, 0);
+            ctx.restore();
+
+            // Show Result
+            canvasOutput.classList.remove('hidden');
+            resultPlaceholder.classList.add('hidden');
+            
+            // Enable Download
+            downloadBtn.disabled = false;
+            downloadBtn.classList.remove('bg-slate-200', 'text-slate-400');
+            downloadBtn.classList.add('bg-blue-600', 'text-white');
+        }
+    </script>
+</body>
+</html>
