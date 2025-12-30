@@ -103,12 +103,13 @@
                 </div>
 
                 <!-- Preview Image (Hidden initially) -->
-                <img id="preview-img" class="absolute inset-0 w-full h-full object-contain z-10 hidden p-2" src="" alt="Preview">
+                <!-- Added onclick handler logic in JS to stop propagation -->
+                <img id="preview-img" class="absolute inset-0 w-full h-full object-contain z-10 hidden p-2 bg-gray-900" src="" alt="Preview">
                 
                 <!-- Overlay on hover when image is loaded -->
                 <div id="img-overlay" class="absolute inset-0 bg-black bg-opacity-50 z-30 hidden flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                    <span class="text-yellow-300 font-bold border border-yellow-300 px-4 py-2 bg-black bg-opacity-70">
-                        [ RE-UPLOAD ]
+                    <span class="text-cyan-300 font-bold border border-cyan-300 px-4 py-2 bg-black bg-opacity-70 tracking-widest">
+                        [ CLICK TO OPEN ]
                     </span>
                 </div>
             </div>
@@ -179,8 +180,12 @@
     </div>
 
     <!-- Footer -->
-    <footer class="text-center mt-12 text-gray-600 text-xs">
-        &copy; 2077 CYBER_EXIF SYSTEMS. ALL RIGHTS RESERVED.
+    <footer class="text-center mt-12 text-gray-600 text-xs pb-8">
+        <p>&copy; 2077 CYBER_EXIF SYSTEMS. ALL RIGHTS RESERVED.</p>
+        <div class="mt-6 pt-6 border-t border-gray-800 max-w-md mx-auto space-y-2">
+            <p class="text-cyan-500 font-bold text-sm tracking-wider">程式設計：賀禎禎攝影教室</p>
+            <p class="text-gray-400 font-mono">連絡方式：hojenjen2018@gmail.com</p>
+        </div>
     </footer>
 
     <script>
@@ -314,6 +319,25 @@
         fileInput.addEventListener('change', (e) => {
             if (e.target.files.length) {
                 handleFiles(e.target.files);
+            }
+        });
+
+        // New Click Listener for Preview Image to Open in New Tab
+        previewImg.addEventListener('click', (e) => {
+            e.stopPropagation(); // Stop bubbling to dropZone which would trigger file input
+            if (previewImg.src) {
+                const w = window.open("");
+                if (w) {
+                    w.document.write(`
+                        <html>
+                            <head><title>IMG_VIEWER_V2077</title></head>
+                            <body style="margin:0;background:#050a0e;display:flex;justify-content:center;align-items:center;height:100vh;">
+                                <img src="${previewImg.src}" style="max-width:100%;max-height:100%;box-shadow:0 0 20px #00fff9;">
+                            </body>
+                        </html>
+                    `);
+                    w.document.close(); // Important for some browsers to finish loading
+                }
             }
         });
 
