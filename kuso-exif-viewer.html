@@ -3,236 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEO-TOKYO // EXIF_DECK v2.077_HOTFIX</title>
-    <!-- 引入 Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    <!-- 引入 Tailwind CSS -->
+    <title>NEO-TOKYO // EXIF_DECK</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入 exif-js 用於讀取照片資訊 -->
     <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
-
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        cyber: {
-                            dark: "#050a0e",
-                            frame: "#111827",
-                            cyan: "#00fff9",
-                            pink: "#fe0056",
-                            yellow: "#fcec0c",
-                            green: "#39ff14",
-                            text: "#e0f7fa"
-                        }
-                    },
-                    fontFamily: {
-                        sans: ['"Noto Sans TC"', 'sans-serif'],
-                        mono: ['"Share Tech Mono"', 'monospace'],
-                        title: ['"Orbitron"', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
-
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
+        /* Cyberpunk Theme Configuration */
+        :root {
+            --cyber-dark: #050a0e;
+            --cyber-bg-frame: #111827;
+            --cyber-cyan: #00fff9;
+            --cyber-pink: #fe0056;
+            --cyber-yellow: #fcec0c;
+            --cyber-green: #39ff14;
+            --cyber-text: #e0f7fa;
+        }
+
         body {
-            background-color: #050a0e;
-            color: #e0f7fa;
+            background-color: var(--cyber-dark);
+            color: var(--cyber-text);
+            font-family: 'Share Tech Mono', 'Noto Sans TC', monospace;
             overflow-x: hidden;
         }
 
-        /* 霓虹發光效果 */
-        .neon-border-cyan {
-            box-shadow: 0 0 5px #00fff9, 0 0 10px #00fff9 inset;
+        /* Glitch Effect Classes & Utils */
+        .cyber-border {
+            position: relative;
         }
-        .neon-text-cyan {
-            text-shadow: 0 0 5px #00fff9;
-        }
-        .neon-border-pink {
-            box-shadow: 0 0 5px #fe0056, 0 0 10px #fe0056 inset;
-        }
-        .neon-text-pink {
-            text-shadow: 0 0 5px #fe0056;
-        }
-        .neon-border-yellow {
-            box-shadow: 0 0 5px #fcec0c, 0 0 10px #fcec0c inset;
+        
+        .cyber-border::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: 0.5rem;
+            pointer-events: none;
+            z-index: 10;
         }
 
-        /* CRT 掃描線特效 */
-        .crt-overlay {
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            background-size: 100% 2px, 3px 100%;
+        .border-cyan::before { border: 1px solid var(--cyber-cyan); box-shadow: 0 0 5px var(--cyber-cyan); }
+        .border-pink::before { border: 1px solid var(--cyber-pink); box-shadow: 0 0 5px var(--cyber-pink); }
+        .border-yellow::before { border: 1px solid var(--cyber-yellow); box-shadow: 0 0 5px var(--cyber-yellow); }
+
+        .scanline {
+            width: 100%;
+            height: 100px;
+            z-index: 999;
+            background: linear-gradient(0deg, rgba(0,0,0,0) 0%, rgba(0, 255, 249, 0.1) 50%, rgba(0,0,0,0) 100%);
+            opacity: 0.1;
+            position: fixed;
+            bottom: 100%;
+            animation: scanline 10s linear infinite;
             pointer-events: none;
         }
 
-        /* 滾動條樣式 */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #111827; 
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #00fff9; 
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #fe0056; 
+        @keyframes scanline {
+            0% { bottom: 100%; }
+            100% { bottom: -100px; }
         }
 
-        .glitch-hover:hover {
-            animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
-            color: #fe0056;
-        }
+        .text-glow-cyan { text-shadow: 0 0 5px var(--cyber-cyan); }
+        .text-glow-pink { text-shadow: 0 0 5px var(--cyber-pink); }
 
-        @keyframes glitch {
-            0% { transform: translate(0) }
-            20% { transform: translate(-2px, 2px) }
-            40% { transform: translate(-2px, -2px) }
-            60% { transform: translate(2px, 2px) }
-            80% { transform: translate(2px, -2px) }
-            100% { transform: translate(0) }
-        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--cyber-dark); }
+        ::-webkit-scrollbar-thumb { background: var(--cyber-bg-frame); border: 1px solid var(--cyber-cyan); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--cyber-cyan); }
 
-        /* 隱藏原生 input */
-        .hidden-input {
-            display: none;
-        }
-        
-        .typewriter-text {
-            white-space: pre-wrap;
-            font-family: 'Share Tech Mono', 'Noto Sans TC', monospace;
-        }
-
-        /* 拖曳時的高亮樣式 */
-        .drag-active {
-            border-color: #fe0056 !important;
-            box-shadow: 0 0 15px #fe0056, 0 0 20px #fe0056 inset !important;
-            background-color: rgba(254, 0, 86, 0.1) !important;
-        }
+        .hidden-file-input { display: none; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col font-sans crt-overlay">
+<body class="min-h-screen flex flex-col p-4 md:p-8">
 
-    <!-- 頂部 Header -->
-    <header class="w-full p-4 border-b border-cyber-cyan bg-cyber-dark z-10">
-        <h1 class="text-2xl md:text-3xl font-title text-cyber-cyan text-center tracking-widest neon-text-cyan">
-            [ N E O - T O K Y O // E X I F _ D E C K v2.077 ]
+    <div class="scanline"></div>
+
+    <!-- Header -->
+    <header class="text-center mb-8 border-b border-gray-800 pb-4">
+        <h1 class="text-3xl md:text-5xl font-bold text-cyan-400 text-glow-cyan tracking-tighter">
+            [ N E O - T O K Y O // E X I F _ D E C K ]
         </h1>
+        <p class="text-xs text-gray-500 mt-2">SYSTEM v2.077 // READY FOR INPUT</p>
     </header>
 
-    <!-- 主容器 -->
-    <main class="flex-grow container mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
-
-        <!-- 1. 圖片預覽區 -->
-        <section id="drop-zone" class="lg:col-span-2 bg-cyber-frame border-2 border-cyber-cyan rounded-lg relative min-h-[300px] flex flex-col items-center justify-center overflow-hidden transition-all duration-300 hover:shadow-[0_0_15px_#00fff9]">
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        <!-- Left Column: Preview & Basic Info -->
+        <div class="space-y-6">
             
-            <!-- 計數器 -->
-            <div id="image-counter" class="absolute top-2 right-2 text-cyber-yellow font-mono z-20 bg-black/70 px-3 py-1 rounded border border-cyber-yellow hidden">
-                [ QUEUE: 0 / 0 ]
-            </div>
-
-            <!-- 預設提示 -->
-            <div id="upload-hint" class="text-center p-8 z-10 w-full max-w-2xl pointer-events-none">
-                <p class="font-title text-xl md:text-2xl text-cyber-cyan mb-4 animate-pulse">>> 拖曳影像資料至此載入 <<</p>
-                <div class="flex flex-col md:flex-row gap-4 justify-center items-center mt-6 w-full pointer-events-auto">
-                    <button onclick="document.getElementById('file-input').click()" class="w-full md:w-auto px-6 py-2 border border-cyber-cyan text-cyber-cyan hover:bg-cyber-cyan hover:text-black transition-colors font-bold font-mono">
-                        // 選擇檔案 (多選) //
-                    </button>
-                    <button onclick="document.getElementById('folder-input').click()" class="w-full md:w-auto px-6 py-2 border border-cyber-pink text-cyber-pink hover:bg-cyber-pink hover:text-black transition-colors font-bold font-mono">
-                        // 選擇資料夾 (批次) //
-                    </button>
+            <!-- Drop Zone / Image Preview -->
+            <div id="drop-zone" class="cyber-border border-cyan bg-gray-900 h-96 relative flex items-center justify-center cursor-pointer overflow-hidden group transition-all duration-300 hover:bg-gray-800">
+                <input type="file" id="file-input" class="hidden-file-input" accept="image/jpeg,image/jpg,image/png,image/webp" multiple>
+                
+                <!-- Initial State -->
+                <div id="drop-hint" class="text-center p-6 z-20">
+                    <div class="text-cyan-400 text-6xl mb-4 group-hover:scale-110 transition-transform">📂</div>
+                    <h3 class="text-xl text-cyan-400 font-bold">>> DRAG IMAGE HERE <<</h3>
+                    <p class="text-gray-500 text-sm mt-2">[ OR CLICK TO BROWSE ]</p>
                 </div>
-                <p class="text-cyber-text opacity-70 font-mono text-sm mt-4 pointer-events-auto">
-                    [ 提示：若需批次瀏覽，請拖曳多個檔案或使用資料夾按鈕 ]
-                </p>
+
+                <!-- Preview Image (Hidden initially) -->
+                <img id="preview-img" class="absolute inset-0 w-full h-full object-contain z-10 hidden p-2" src="" alt="Preview">
+                
+                <!-- Overlay on hover when image is loaded -->
+                <div id="img-overlay" class="absolute inset-0 bg-black bg-opacity-50 z-30 hidden flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    <span class="text-yellow-300 font-bold border border-yellow-300 px-4 py-2 bg-black bg-opacity-70">
+                        [ RE-UPLOAD ]
+                    </span>
+                </div>
             </div>
 
-            <!-- 圖片顯示 -->
-            <img id="preview-image" src="" alt="Preview" class="hidden max-h-[500px] w-auto object-contain p-2 z-10 pointer-events-none">
-            
-            <!-- Hover 警告 -->
-            <div id="hover-warning" class="hidden absolute pointer-events-none bg-cyber-yellow text-cyber-dark font-bold p-2 rounded z-20 shadow-lg whitespace-nowrap">
-                [ 警告：偵測到手指輸入 ]<br>點啊，你給我點啊
+            <!-- Controls -->
+            <div class="grid grid-cols-3 gap-4">
+                <button id="btn-prev" class="bg-gray-800 border border-cyan-500 text-cyan-400 py-3 font-bold hover:bg-cyan-900 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    &lt; PREV
+                </button>
+                <button id="btn-export" class="bg-gray-800 border border-green-500 text-green-400 py-3 font-bold hover:bg-green-900 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    EXPORT .TXT
+                </button>
+                <button id="btn-next" class="bg-gray-800 border border-cyan-500 text-cyan-400 py-3 font-bold hover:bg-cyan-900 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    NEXT &gt;
+                </button>
             </div>
 
-            <input type="file" id="file-input" class="hidden-input" multiple accept="image/*" onchange="handleFiles(this.files)">
-            <input type="file" id="folder-input" class="hidden-input" multiple webkitdirectory directory onchange="handleFiles(this.files)">
-        </section>
-
-        <!-- 進度條 -->
-        <div id="progress-container" class="lg:col-span-2 hidden">
-            <div class="w-full bg-cyber-dark border border-cyber-cyan h-2">
-                <div id="progress-bar" class="bg-cyber-cyan h-full w-0 transition-all duration-300"></div>
+            <!-- System Status -->
+            <div class="bg-black border-l-2 border-yellow-400 p-2 font-mono text-xs text-yellow-300">
+                <span id="status-text">SYSTEM STATUS: WAITING FOR USER INPUT...</span>
             </div>
-            <p class="text-xs text-cyber-cyan font-mono mt-1 animate-pulse">ANALYZING NEURAL LINK...</p>
+
         </div>
 
-        <!-- 2. 裝備清單 -->
-        <section class="bg-cyber-frame border-2 border-cyber-yellow rounded-lg p-4 flex flex-col h-full min-h-[300px]">
-            <h2 class="text-xl font-bold text-cyber-yellow mb-4 border-b border-cyber-yellow pb-2 font-title">
-                [ 裝備清單 // GEAR_LIST ]
-            </h2>
-            <div id="gear-list-content" class="typewriter-text text-cyber-text text-sm md:text-base flex-grow overflow-y-auto pr-2">
-                <!-- 內容由 JS 填充 -->
-                <span class="opacity-50 text-gray-400">WAITING FOR DATA STREAM...</span>
+        <!-- Right Column: Data & Logs -->
+        <div class="space-y-6">
+
+            <!-- Gear List -->
+            <div class="bg-gray-900 cyber-border border-yellow p-6 min-h-[200px]">
+                <h2 class="text-yellow-300 text-xl font-bold mb-4 border-b border-gray-800 pb-2 flex justify-between">
+                    <span>[ 裝備清單 // GEAR_LIST ]</span>
+                    <span class="text-xs self-center animate-pulse">● REC</span>
+                </h2>
+                <div id="gear-content" class="text-gray-300 space-y-2 font-mono whitespace-pre-wrap leading-relaxed">
+                    <!-- Data will be injected here -->
+                    <span class="text-gray-600">NO DATA LOADED.</span>
+                </div>
             </div>
-        </section>
 
-        <!-- 3. 前世今生 -->
-        <section class="bg-cyber-frame border-2 border-cyber-pink rounded-lg p-4 flex flex-col h-full min-h-[300px]">
-            <h2 class="text-xl font-bold text-cyber-pink mb-4 border-b border-cyber-pink pb-2 font-title">
-                [ 前世今生 // EXPOSURE_DATA ]
-            </h2>
-            <div id="exposure-data-content" class="typewriter-text text-cyber-text text-sm md:text-base flex-grow overflow-y-auto pr-2">
-                <!-- 內容由 JS 填充 -->
-                <span class="opacity-50 text-gray-400">WAITING FOR DATA STREAM...</span>
+            <!-- Exposure Data -->
+            <div class="bg-gray-900 cyber-border border-pink p-6 min-h-[200px]">
+                <h2 class="text-pink-500 text-xl font-bold mb-4 border-b border-gray-800 pb-2">
+                    [ 前世今生 // EXPOSURE_DATA ]
+                </h2>
+                <div id="exposure-content" class="text-gray-300 space-y-2 font-mono whitespace-pre-wrap leading-relaxed">
+                    <!-- Data will be injected here -->
+                    <span class="text-gray-600">AWAITING TARGET...</span>
+                </div>
             </div>
-        </section>
 
-        <!-- 4. 控制按鈕區 -->
-        <section class="lg:col-span-2 flex flex-col md:flex-row gap-4 justify-between items-center mt-4">
-            <button onclick="prevImage()" class="w-full md:w-1/4 py-3 bg-transparent border-2 border-cyber-cyan text-cyber-cyan font-bold rounded hover:bg-cyber-cyan hover:text-black transition-all font-title glitch-hover disabled:opacity-50 disabled:cursor-not-allowed">
-                &lt; 上一張
-            </button>
-            
-            <button onclick="exportToTxt()" class="w-full md:w-1/2 py-3 bg-cyber-green text-black font-bold rounded shadow-[0_0_15px_#39ff14] hover:bg-white transition-all font-title transform hover:scale-105">
-                >> 輸出照片身份證 <<
-            </button>
-
-            <button onclick="nextImage()" class="w-full md:w-1/4 py-3 bg-transparent border-2 border-cyber-cyan text-cyber-cyan font-bold rounded hover:bg-cyber-cyan hover:text-black transition-all font-title glitch-hover disabled:opacity-50 disabled:cursor-not-allowed">
-                下一張 &gt;
-            </button>
-        </section>
+        </div>
 
     </main>
 
-    <!-- 底部狀態列 -->
-    <footer class="w-full bg-black p-2 border-t border-gray-800 mt-6">
-        <p id="system-status" class="text-xs font-mono text-cyber-cyan">SYSTEM STATUS: WAITING FOR INPUT...</p>
-    </footer>
-
-    <!-- 隨機金句彈跳視窗 (Modal) -->
-    <div id="quote-modal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-80 z-50 hidden" onclick="closeModal()">
-        <div class="bg-cyber-frame border-2 border-cyber-pink w-[90%] max-w-lg p-1 shadow-[0_0_30px_#fe0056] transform scale-95 transition-transform duration-200" onclick="event.stopPropagation()">
-            <div class="border border-cyber-pink p-6 flex flex-col items-center text-center">
-                <h3 class="text-cyber-pink font-mono mb-4 text-lg">
-                    // SYSTEM_OVERRIDE // 靈魂拷問程序啟動 //
-                </h3>
-                <p id="quote-text" class="text-cyber-text text-xl md:text-2xl font-bold mb-8 leading-relaxed">
-                    <!-- 毒雞湯 -->
-                </p>
-                <p class="text-cyber-yellow font-bold text-lg animate-pulse cursor-pointer hover:underline" onclick="closeModal()">
-                    [ 點擊任意處關閉 ]
-                </p>
+    <!-- Modal for Soul Quotes -->
+    <div id="modal-quote" class="fixed inset-0 bg-black bg-opacity-90 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-gray-900 border-2 border-pink-500 max-w-lg w-full p-8 relative shadow-[0_0_20px_rgba(254,0,86,0.3)] transform transition-all scale-95 opacity-0" id="modal-inner">
+            <div class="text-pink-500 font-bold mb-4 text-sm tracking-widest">// SYSTEM_OVERRIDE // 靈魂拷問程序啟動 //</div>
+            <p id="quote-text" class="text-2xl md:text-3xl font-bold text-white leading-tight mb-8">
+                <!-- Quote goes here -->
+            </p>
+            <div class="text-center">
+                <button id="btn-close-modal" class="text-yellow-300 border border-yellow-300 px-6 py-2 hover:bg-yellow-300 hover:text-black font-bold transition-colors">
+                    [ ACKNOWLEDGE ]
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- JavaScript 邏輯 -->
+    <!-- Footer -->
+    <footer class="text-center mt-12 text-gray-600 text-xs">
+        &copy; 2077 CYBER_EXIF SYSTEMS. ALL RIGHTS RESERVED.
+    </footer>
+
     <script>
-        // --- 資料庫 (保持不變) ---
+        // --- DATA RESOURCES ---
         const SOUL_QUOTES = [
             "你不是升級器材，是延後面對實力", "防潮箱是攝影師的夢想冰櫃", "器材全新，作品全無",
             "鏡頭越貴，越不敢帶出門", "鏡頭比你的人生規劃清楚", "開箱拍得比作品認真",
@@ -313,302 +265,237 @@
             "tecno": "Tecno\n👉 「你可能沒聽過我，但我賣得比你想像多。」",
             "honor": "Honor（榮耀）\n👉 「我不是華為，但大家一直這樣看我。」",
             "nokia": "Nokia（諾基亞）\n👉 「手機會壞，但我不會倒。」",
-            "htc": "HTC\n👉 「我曾經站在世界之巔。」"
+            "htc": "HTC\n👉 「我曾經站在世界之巔。」",
+            "sony": "Sony（索尼）\n👉 「Sony：對焦比你人生目標還快。」"
         };
 
-        // --- 狀態管理 ---
-        let filesQueue = [];
+        // --- APP STATE ---
+        let currentFiles = [];
         let currentIndex = -1;
-        let currentExifData = null;
+        let currentExifCache = {};
 
-        // --- DOM 元素 ---
+        // --- DOM ELEMENTS ---
         const dropZone = document.getElementById('drop-zone');
-        const previewImg = document.getElementById('preview-image');
-        const uploadHint = document.getElementById('upload-hint');
-        const progressBar = document.getElementById('progress-bar');
-        const progressContainer = document.getElementById('progress-container');
-        const gearListEl = document.getElementById('gear-list-content');
-        const exposureDataEl = document.getElementById('exposure-data-content');
-        const statusLabel = document.getElementById('system-status');
-        const modal = document.getElementById('quote-modal');
-        const quoteText = document.getElementById('quote-text');
-        const hoverWarning = document.getElementById('hover-warning');
-        const imageCounter = document.getElementById('image-counter');
-
-        // --- 拖曳邏輯 (HOTFIX) ---
+        const fileInput = document.getElementById('file-input');
+        const previewImg = document.getElementById('preview-img');
+        const dropHint = document.getElementById('drop-hint');
+        const imgOverlay = document.getElementById('img-overlay');
+        const statusText = document.getElementById('status-text');
         
-        // 1. 全域阻止瀏覽器預設行為 (避免直接打開圖片)
-        window.addEventListener('dragover', e => e.preventDefault(), false);
-        window.addEventListener('drop', e => e.preventDefault(), false);
+        const gearContent = document.getElementById('gear-content');
+        const exposureContent = document.getElementById('exposure-content');
+        
+        const btnPrev = document.getElementById('btn-prev');
+        const btnNext = document.getElementById('btn-next');
+        const btnExport = document.getElementById('btn-export');
 
-        // 2. Drop Zone 強制事件處理
-        // 使用陣列綁定，確保所有拖曳相關事件都被攔截
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, preventDefaults, false);
-        });
+        const modalQuote = document.getElementById('modal-quote');
+        const modalInner = document.getElementById('modal-inner');
+        const quoteText = document.getElementById('quote-text');
+        const btnCloseModal = document.getElementById('btn-close-modal');
 
-        function preventDefaults(e) {
+        // --- EVENT LISTENERS ---
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
-            e.stopPropagation();
-        }
-
-        // 3. 視覺回饋
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, highlight, false);
+            dropZone.classList.add('bg-gray-800');
         });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, unhighlight, false);
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('bg-gray-800');
         });
-
-        function highlight(e) {
-            dropZone.classList.add('drag-active');
-        }
-
-        function unhighlight(e) {
-            dropZone.classList.remove('drag-active');
-        }
-
-        // 4. 處理 Drop
-        dropZone.addEventListener('drop', handleDrop, false);
-
-        function handleDrop(e) {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-
-            if (files && files.length > 0) {
-                handleFiles(files);
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('bg-gray-800');
+            if (e.dataTransfer.files.length) {
+                handleFiles(e.dataTransfer.files);
             }
-        }
-
-
-        // --- 滑鼠懸停邏輯 (致敬原作) ---
-        // 修正：確保圖片不會干擾拖曳，但可以觸發 hover
-        previewImg.addEventListener('mouseenter', (e) => {
-            if (currentIndex !== -1) {
-                hoverWarning.classList.remove('hidden');
-                updateHoverPosition(e);
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleFiles(e.target.files);
             }
         });
 
-        previewImg.addEventListener('mousemove', (e) => {
-            if (currentIndex !== -1) {
-                updateHoverPosition(e);
-            }
-        });
+        btnPrev.addEventListener('click', () => loadFile(currentIndex - 1));
+        btnNext.addEventListener('click', () => loadFile(currentIndex + 1));
+        btnExport.addEventListener('click', exportData);
+        btnCloseModal.addEventListener('click', hideQuote);
 
-        previewImg.addEventListener('mouseleave', () => {
-            hoverWarning.classList.add('hidden');
-        });
+        // --- CORE LOGIC ---
 
-        function updateHoverPosition(e) {
-            const rect = dropZone.getBoundingClientRect();
-            let x = e.clientX - rect.left + 20;
-            let y = e.clientY - rect.top + 20;
-            
-            // 邊界檢查
-            if(x > rect.width - 200) x = rect.width - 200;
-            if(y > rect.height - 50) y = rect.height - 50;
-
-            hoverWarning.style.left = `${x}px`;
-            hoverWarning.style.top = `${y}px`;
-        }
-
-
-        // --- 檔案處理主邏輯 ---
         function handleFiles(files) {
-            // 放寬過濾條件：除了 MIME type，也檢查副檔名
-            const validExtensions = ['.jpg', '.jpeg', '.png', '.tiff', '.webp', '.gif', '.bmp', '.heic'];
-            
-            const newFiles = Array.from(files).filter(f => {
-                const isMime = f.type.startsWith('image/');
-                const name = f.name.toLowerCase();
-                // 有些系統 MIME type 判斷不准，補強副檔名判斷
-                const isExt = validExtensions.some(ext => name.endsWith(ext));
-                return isMime || isExt;
-            });
+            // Filter images
+            const validFiles = Array.from(files).filter(file => 
+                file.type.match('image.*')
+            );
 
-            if (newFiles.length === 0) {
-                alert("未偵測到支援的影像格式 // NO VALID IMAGES DETECTED\n請確認檔案是否為圖片。");
+            if (validFiles.length === 0) {
+                updateStatus("ERROR: NO VALID IMAGES DETECTED.");
                 return;
             }
-            
-            // 嘗試依照檔名排序 (模擬資料夾順序)
-            newFiles.sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: 'base'}));
 
-            filesQueue = newFiles;
+            // If we already have files and new ones are added, append them? 
+            // For simplicity, let's replace the list like standard gallery apps or the original py script logic per folder
+            currentFiles = validFiles;
             currentIndex = 0;
+            loadFile(0);
+        }
+
+        function loadFile(index) {
+            if (index < 0) index = currentFiles.length - 1;
+            if (index >= currentFiles.length) index = 0;
             
-            updateCounter();
-            processImage(filesQueue[currentIndex]);
-        }
+            currentIndex = index;
+            const file = currentFiles[currentIndex];
 
-        function updateCounter() {
-            if (filesQueue.length > 0) {
-                imageCounter.classList.remove('hidden');
-                imageCounter.innerText = `[ QUEUE: ${currentIndex + 1} / ${filesQueue.length} ]`;
-            } else {
-                imageCounter.classList.add('hidden');
-            }
-        }
-
-        function prevImage() {
-            if (filesQueue.length === 0) return;
-            currentIndex = (currentIndex - 1 + filesQueue.length) % filesQueue.length;
-            updateCounter();
-            processImage(filesQueue[currentIndex]);
-        }
-
-        function nextImage() {
-            if (filesQueue.length === 0) return;
-            currentIndex = (currentIndex + 1) % filesQueue.length;
-            updateCounter();
-            processImage(filesQueue[currentIndex]);
-        }
-
-        function processImage(file) {
-            // UI 重置
-            uploadHint.classList.add('hidden');
-            previewImg.classList.add('hidden');
-            progressContainer.classList.remove('hidden');
-            progressBar.style.width = '10%';
-            statusLabel.innerText = `ANALYZING TARGET: ${file.name}...`;
-
+            // UI Updates
+            updateStatus(`ANALYZING TARGET: ${file.name}...`);
+            updateButtons();
+            
+            // Preview
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = (e) => {
                 previewImg.src = e.target.result;
                 previewImg.classList.remove('hidden');
+                dropHint.classList.add('hidden');
                 
-                // 模擬分析進度
-                setTimeout(() => { progressBar.style.width = '50%'; }, 200);
-
-                // 使用 EXIF.js
-                EXIF.getData(file, function() {
-                    const exifData = this.exifdata || {};
-                    const width = this.naturalWidth || exifData.PixelXDimension || 0;
-                    const height = this.naturalHeight || exifData.PixelYDimension || 0;
-                    
-                    analyzeData(exifData, file, width, height);
-                    
-                    progressBar.style.width = '100%';
-                    setTimeout(() => { progressContainer.classList.add('hidden'); }, 500);
-                    
-                    // 顯示隨機毒雞湯
-                    showRandomQuote();
-                });
+                // Once image loads, parse EXIF
+                // We use the Image object for EXIF.js
+                previewImg.onload = () => {
+                   parseExif(previewImg, file);
+                };
             };
-            // 處理讀取錯誤
-            reader.onerror = function() {
-                alert("檔案讀取失敗，請確認檔案權限。");
-                progressContainer.classList.add('hidden');
-            };
-            
             reader.readAsDataURL(file);
         }
 
-        // --- 數據分析核心 ---
-        function analyzeData(data, file, width, height) {
-            const make = data.Make ? data.Make.trim() : "";
-            const model = data.Model ? data.Model.trim() : "";
-            const camName = (make || model) ? `${make} ${model}` : "我沒有名字";
-            const lensMake = data.LensMake || "";
-            const lensModel = data.LensModel || "";
-            let lensName = `${lensMake} ${lensModel}`.trim();
-            if (!lensName) lensName = "我沒有眼鏡";
+        function parseExif(imgElement, file) {
+            EXIF.getData(imgElement, function() {
+                const allData = EXIF.getAllTags(this);
+                processExifData(allData, file, imgElement.naturalWidth, imgElement.naturalHeight);
+            });
+        }
 
-            const dateTime = data.DateTimeOriginal || data.DateTime || "";
-            const dateAnalysis = analyzeDateSentiment(dateTime);
-            
-            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-            // 經緯度轉換稍微複雜，這裡簡化判斷
-            const gpsStr = (data.GPSLatitude && data.GPSLongitude) ? "包含座標數據" : "我沒有 GPS ，你別看了";
+        function processExifData(exif, file, width, height) {
+            // Safe Getters
+            const get = (key) => exif[key] ? exif[key] : null;
 
-            // 品牌毒舌
-            const brandQuote = getBrandQuote(make, model);
-
-            // 構建 Gear List
-            const basicText = `DEVICE_NAME : ${camName}
-LENS_MODEL  : ${lensName}
-CAPTURE_DATE: ${dateAnalysis}
-
-RESOLUTION  : ${width} x ${height} (${(width * height / 1000000).toFixed(1)} MP)
-FILE_SIZE   : ${sizeMB} MB
-GPS_STATUS  : ${gpsStr}
-
-==============================`;
-
-            gearListEl.innerHTML = basicText + (brandQuote ? `<br><br><span class="text-cyber-yellow font-bold">${brandQuote}</span>` : "");
-
-            // 構建 Exposure Data
-            const exposureProgram = data.ExposureProgram;
+            // 1. Exposure Mode
             let expModeStr = "你亂拍對吧?";
-            if (exposureProgram === 1) expModeStr = "M = Magic Mode（魔法模式） 👉 新手以為進去會自動變強";
-            else if (exposureProgram === 2) expModeStr = "P = Pray Mode（祈禱模式） 👉 希望相機懂我";
-            else if (exposureProgram === 3) expModeStr = "Av = Art Vision 模式（藝術視角） 👉 背景能糊就是好照片";
-            else if (exposureProgram === 4) expModeStr = "S = Stop That Motion 模式 👉 不准動！";
-            else expModeStr = "Auto = Blame the Camera Mode（出事怪相機）";
+            if (get('ExposureProgram')) {
+                const mode = get('ExposureProgram');
+                // EXIF.js usually returns numbers or strings depending on version. 
+                // Standard EXIF: 1=Manual, 2=Program, 3=Aperture Priority, 4=Shutter Priority
+                // Sometimes EXIF.js parses it to string. Let's handle generic values or raw numbers.
+                // Note: The original py script checks integers.
+                const mVal = parseInt(mode);
+                if (mVal === 1) expModeStr = "M = Magic Mode（魔法模式） 👉 新手以為進去會自動變強";
+                else if (mVal === 2) expModeStr = "P = Pray Mode（祈禱模式） 👉 希望相機懂我";
+                else if (mVal === 3) expModeStr = "Av = Art Vision 模式（藝術視角） 👉 背景能糊就是好照片";
+                else if (mVal === 4) expModeStr = "S = Stop That Motion 模式 👉 不准動！";
+                else expModeStr = "Auto = Blame the Camera Mode（出事怪相機）";
+            }
 
-            const iso = data.ISOSpeedRatings || "我讀不到別問我";
-            
+            // 2. Date Sentiment
+            const dateStr = get('DateTimeOriginal') || get('DateTime') || "";
+            const dateAnalysis = analyzeDateSentiment(dateStr);
+
+            // 3. Shutter Speed
             let shutterStr = "別看這，沒資料";
-            if (data.ExposureTime) {
-                const val = parseFloat(data.ExposureTime);
+            if (get('ExposureTime')) {
+                const val = parseFloat(get('ExposureTime'));
                 if (val > 0) {
                     if (val < 1) shutterStr = `1/${Math.round(1/val)}`;
                     else shutterStr = `${val} 秒`;
                 }
             }
 
+            // 4. Aperture
             let fStr = "大概沒裝鏡頭吧?";
-            if (data.FNumber) {
-                fStr = `f/${parseFloat(data.FNumber)}`;
+            if (get('FNumber')) {
+                fStr = `f/${parseFloat(get('FNumber'))}`;
             }
 
+            // 5. Focal Length
             let flStr = "我累了";
-            if (data.FocalLength) {
-                flStr = `${parseFloat(data.FocalLength)} mm`;
+            if (get('FocalLength')) {
+                flStr = `${parseFloat(get('FocalLength'))} mm`;
             }
 
-            const wbMap = {0: "自動", 1: "手動"};
-            let wbStr = "色彩不重要";
-            if (data.WhiteBalance !== undefined) {
-                wbStr = wbMap[data.WhiteBalance] || "其他";
-            }
-
+            // 6. Hyperfocal (Estimation)
             let hyperStr = "這你不需要知道，反正你也不在乎";
             try {
-                const fl = parseFloat(data.FocalLength);
-                const fn = parseFloat(data.FNumber);
+                const fl = parseFloat(get('FocalLength'));
+                const fn = parseFloat(get('FNumber'));
                 if (fl > 0 && fn > 0) {
-                    const hf = ((Math.pow(fl, 2)) / (fn * 0.03) + fl) / 1000;
+                    const hf = ((fl * fl) / (fn * 0.03) + fl) / 1000;
                     hyperStr = `${hf.toFixed(2)} m`;
                 }
             } catch(e) {}
 
-            const exposureText = `EXP_MODE    : ${expModeStr}
-ISO_SPEED   : ISO ${iso}
+            // 7. ISO
+            const isoVal = get('ISOSpeedRatings') || "我讀不到別問我";
+            const isoStr = `ISO ${isoVal}`;
+
+            // 8. GPS
+            const gpsStr = (get('GPSLatitude') || get('GPSLongitude')) ? "包含座標數據" : "我沒有 GPS ，你別看了";
+
+            // 9. Camera & Lens
+            const make = (get('Make') || "").trim();
+            const model = (get('Model') || "").trim();
+            const camName = (make || model) ? `${make} ${model}` : "我沒有名字";
+            // Lens data is tricky in EXIF.js, often stored in MakerNotes which EXIF.js might not parse fully.
+            // We'll try standard tags.
+            const lensModel = get('LensModel') || get('UndefinedTag:0xA434') || "我沒有眼鏡";
+
+            // Brand Quote
+            const brandQuote = getBrandQuote(make, model);
+
+            // File Size
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+
+            // --- BUILD STRINGS ---
+            const basicText = 
+`DEVICE_NAME : ${camName}
+LENS_MODEL  : ${lensModel}
+CAPTURE_DATE: ${dateAnalysis}
+
+RESOLUTION  : ${width} x ${height} (${(width*height/1000000).toFixed(1)} MP)
+FILE_SIZE   : ${sizeMB} MB
+GPS_STATUS  : ${gpsStr}
+==============================`;
+
+            const exposureText = 
+`EXP_MODE    : ${expModeStr}
+ISO_SPEED   : ${isoStr}
 SHUTTER     : ${shutterStr}
 APERTURE    : ${fStr}
 FOCAL_LEN   : ${flStr}
-WHITE_BAL   : ${wbStr}
 HYPERFOCAL  : ${hyperStr}`;
 
-            exposureDataEl.innerText = exposureText;
+            // --- RENDER ---
+            gearContent.innerHTML = basicText + (brandQuote ? `\n\n<span class="text-yellow-400 font-bold">${brandQuote}</span>` : "");
+            exposureContent.innerText = exposureText;
+            updateStatus("ANALYSIS COMPLETE. DATA READY.");
 
-            currentExifData = {
+            // Cache data for export
+            currentExifCache = {
                 filename: file.name,
-                basic: basicText + (brandQuote ? "\n" + brandQuote : ""),
+                basic: basicText + (brandQuote ? `\n${brandQuote}` : ""),
                 exposure: exposureText
             };
-            
-            statusLabel.innerText = "ANALYSIS COMPLETE. DATA READY.";
+
+            // Show Random Quote
+            showRandomQuote();
         }
 
-        // --- 輔助邏輯 ---
+        // --- HELPERS ---
+
         function getBrandQuote(make, model) {
-            const makeS = String(make).toLowerCase();
-            const modelS = String(model).toLowerCase();
+            const makeS = make.toLowerCase();
+            const modelS = model.toLowerCase();
             
+            // Special Sony case
             if (makeS.includes("sony")) {
                 if (modelS.includes("xperia")) return "Sony（索尼）\n👉 「相機部門很強，但手機只想做給懂的人。」";
                 return "Sony（索尼）\n👉 「Sony：對焦比你人生目標還快。」";
@@ -621,15 +508,18 @@ HYPERFOCAL  : ${hyperStr}`;
         }
 
         function analyzeDateSentiment(dateStr) {
-            if (!dateStr || dateStr === "") return "我沒有生日";
-            const cleanDate = String(dateStr).replace(/^(\d{4}):(\d{2}):(\d{2})/, "$1-$2-$3");
-            const dt = new Date(cleanDate);
-            if (isNaN(dt.getTime())) return `${dateStr} (DATA CORRUPTED)`;
+            if (!dateStr) return "我沒有生日";
+            // EXIF format is usually "YYYY:MM:DD HH:MM:SS"
+            // Convert to standard format for parsing
+            const cleanDateStr = dateStr.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3');
+            const dateObj = new Date(cleanDateStr);
+            
+            if (isNaN(dateObj.getTime())) return `${dateStr} (DATA CORRUPTED)`;
 
-            const year = dt.getFullYear();
-            const mainDate = `${year}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+            const year = dateObj.getFullYear();
+            const mainDate = `${year}-${String(dateObj.getMonth()+1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+            
             let comment = "";
-
             if (year >= 2024) comment = "「還在保固內」\n👉 記憶新鮮、硬碟還沒壞\n👉 「這不是舊照，是回顧」";
             else if (year >= 2023) comment = "「時間過好快模式」\n👉 拍的時候明明是昨天\n👉 「怎麼已經兩年了？」";
             else if (year >= 2022) comment = "「疫情後遺照（情感版）」\n👉 人還在，感覺不一樣了\n👉 「那時候的我，好瘦 / 好天真」";
@@ -642,42 +532,56 @@ HYPERFOCAL  : ${hyperStr}`;
             return `${mainDate}\n\n[ 時光機分析 // TIME_MACHINE_LOG ]\n${comment}`;
         }
 
+        function updateButtons() {
+            btnPrev.disabled = currentFiles.length <= 1;
+            btnNext.disabled = currentFiles.length <= 1;
+            btnExport.disabled = false;
+        }
+
+        function updateStatus(msg) {
+            statusText.textContent = `SYSTEM STATUS: ${msg}`;
+        }
+
         function showRandomQuote() {
             const quote = SOUL_QUOTES[Math.floor(Math.random() * SOUL_QUOTES.length)];
-            quoteText.innerText = quote;
-            modal.classList.remove('hidden');
+            quoteText.textContent = quote;
+            modalQuote.classList.remove('hidden');
+            // Animation trigger
+            setTimeout(() => {
+                modalInner.classList.remove('scale-95', 'opacity-0');
+                modalInner.classList.add('scale-100', 'opacity-100');
+            }, 10);
         }
 
-        function closeModal() {
-            modal.classList.add('hidden');
+        function hideQuote() {
+            modalInner.classList.remove('scale-100', 'opacity-100');
+            modalInner.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modalQuote.classList.add('hidden');
+            }, 300);
         }
 
-        function exportToTxt() {
-            if (!currentExifData) {
-                alert("NO DATA LOADED // 無法輸出空數據");
-                return;
-            }
+        function exportData() {
+            if (!currentExifCache.filename) return;
             
-            const content = `// CYBERDECK EXIF ANALYSIS LOG //
-TARGET_FILE: ${currentExifData.filename}
+            const content = 
+`// CYBERDECK EXIF ANALYSIS LOG //
+TARGET_FILE: ${currentExifCache.filename}
 
 [ GEAR_LIST ]
-${currentExifData.basic}
+${currentExifCache.basic}
 
 [ EXPOSURE_DATA ]
-${currentExifData.exposure}
+${currentExifCache.exposure}
 `;
             const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `${currentExifData.filename}_DATA_LOG.txt`;
-            document.body.appendChild(a);
+            a.download = `${currentExifCache.filename}_DATA_LOG.txt`;
             a.click();
-            document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            
-            alert("檔案已輸出，去找吧，我都存在 one peace了");
+            updateStatus("DATA EXPORTED SUCCESSFULLY.");
         }
     </script>
 </body>
