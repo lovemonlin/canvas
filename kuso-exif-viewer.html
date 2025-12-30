@@ -3,16 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kuso EXIF 檢視器 (V1.0 20251230)</title>
-    <!-- Tailwind CSS -->
+    <title>NEO-TOKYO // EXIF_DECK v2.077</title>
+    <!-- 引入 Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- EXIF.js -->
+    <!-- 引入 exif-js 用於讀取照片資訊 -->
     <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
-    <!-- FontAwesome -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    
+
     <script>
         tailwind.config = {
             theme: {
@@ -20,7 +18,7 @@
                     colors: {
                         cyber: {
                             dark: "#050a0e",
-                            bg: "#111827",
+                            frame: "#111827",
                             cyan: "#00fff9",
                             pink: "#fe0056",
                             yellow: "#fcec0c",
@@ -29,190 +27,192 @@
                         }
                     },
                     fontFamily: {
-                        mono: ['"Share Tech Mono"', '"Noto Sans TC"', 'monospace'],
-                        sans: ['"Noto Sans TC"', 'sans-serif']
+                        sans: ['"Noto Sans TC"', 'sans-serif'],
+                        mono: ['"Share Tech Mono"', 'monospace'],
+                        title: ['"Orbitron"', 'sans-serif'],
                     }
                 }
             }
         }
     </script>
+
     <style>
         body {
             background-color: #050a0e;
             color: #e0f7fa;
-            font-family: 'Noto Sans TC', sans-serif;
             overflow-x: hidden;
         }
-        .neon-border-cyan { box-shadow: 0 0 5px #00fff9, inset 0 0 5px #00fff9; border: 1px solid #00fff9; }
-        .neon-border-pink { box-shadow: 0 0 5px #fe0056, inset 0 0 5px #fe0056; border: 1px solid #fe0056; }
-        .neon-border-yellow { box-shadow: 0 0 5px #fcec0c, inset 0 0 5px #fcec0c; border: 1px solid #fcec0c; }
-        .neon-text-cyan { text-shadow: 0 0 5px #00fff9; }
-        .neon-text-pink { text-shadow: 0 0 5px #fe0056; }
-        
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #111827; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #00fff9; }
 
-        .glitch-effect {
-            position: relative;
+        /* 霓虹發光效果 */
+        .neon-border-cyan {
+            box-shadow: 0 0 5px #00fff9, 0 0 10px #00fff9 inset;
         }
-        .glitch-effect::before, .glitch-effect::after {
-            content: attr(data-text);
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #050a0e;
+        .neon-text-cyan {
+            text-shadow: 0 0 5px #00fff9;
         }
-        .glitch-effect::before {
-            left: 2px;
-            text-shadow: -1px 0 #fe0056;
-            clip: rect(24px, 550px, 90px, 0);
-            animation: glitch-anim-2 3s infinite linear alternate-reverse;
+        .neon-border-pink {
+            box-shadow: 0 0 5px #fe0056, 0 0 10px #fe0056 inset;
         }
-        .glitch-effect::after {
-            left: -2px;
-            text-shadow: -1px 0 #00fff9;
-            clip: rect(85px, 550px, 140px, 0);
-            animation: glitch-anim 2.5s infinite linear alternate-reverse;
+        .neon-text-pink {
+            text-shadow: 0 0 5px #fe0056;
         }
-        @keyframes glitch-anim {
-            0% { clip: rect(10px, 9999px, 30px, 0); }
-            20% { clip: rect(80px, 9999px, 100px, 0); }
-            40% { clip: rect(30px, 9999px, 60px, 0); }
-            60% { clip: rect(70px, 9999px, 110px, 0); }
-            80% { clip: rect(20px, 9999px, 50px, 0); }
-            100% { clip: rect(90px, 9999px, 130px, 0); }
+        .neon-border-yellow {
+            box-shadow: 0 0 5px #fcec0c, 0 0 10px #fcec0c inset;
         }
-        @keyframes glitch-anim-2 {
-            0% { clip: rect(60px, 9999px, 90px, 0); }
-            20% { clip: rect(10px, 9999px, 50px, 0); }
-            40% { clip: rect(90px, 9999px, 120px, 0); }
-            60% { clip: rect(20px, 9999px, 60px, 0); }
-            80% { clip: rect(70px, 9999px, 100px, 0); }
-            100% { clip: rect(30px, 9999px, 70px, 0); }
+
+        /* CRT 掃描線特效 */
+        .crt-overlay {
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        /* 滾動條樣式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #00fff9; 
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #fe0056; 
+        }
+
+        .glitch-hover:hover {
+            animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+            color: #fe0056;
+        }
+
+        @keyframes glitch {
+            0% { transform: translate(0) }
+            20% { transform: translate(-2px, 2px) }
+            40% { transform: translate(-2px, -2px) }
+            60% { transform: translate(2px, 2px) }
+            80% { transform: translate(2px, -2px) }
+            100% { transform: translate(0) }
+        }
+
+        /* 隱藏原生 input */
+        input[type="file"] {
+            display: none;
+        }
+        
+        .typewriter-text {
+            white-space: pre-wrap;
+            font-family: 'Share Tech Mono', 'Noto Sans TC', monospace;
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="min-h-screen flex flex-col font-sans crt-overlay">
 
-    <!-- Header -->
-    <header class="border-b border-cyber-bg p-4 bg-cyber-bg shadow-lg z-10">
-        <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <h1 class="text-2xl md:text-3xl font-bold text-cyber-cyan font-mono tracking-tighter neon-text-cyan glitch-effect" data-text="Kuso EXIF 檢視器 (V1.0 20251230)">
-                Kuso EXIF 檢視器 (V1.0 20251230)
-            </h1>
-            <div class="text-xs text-cyber-yellow font-mono hidden md:block">
-                SYS.STATUS: ONLINE // 20251230
-            </div>
-        </div>
+    <!-- 頂部 Header -->
+    <header class="w-full p-4 border-b border-cyber-cyan bg-cyber-dark z-10">
+        <h1 class="text-2xl md:text-3xl font-title text-cyber-cyan text-center tracking-widest neon-text-cyan">
+            [ N E O - T O K Y O // E X I F _ D E C K v2.077 ]
+        </h1>
     </header>
 
-    <!-- Main Content -->
-    <main class="flex-grow p-4 md:p-6 max-w-7xl mx-auto w-full flex flex-col gap-6">
+    <!-- 主容器 -->
+    <main class="flex-grow container mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
 
-        <!-- Top Section: Image Preview & Upload -->
-        <div class="w-full relative group">
-            <input type="file" id="file-input" class="hidden" accept="image/jpeg,image/jpg,image/png,image/webp">
-            <div id="drop-zone" class="w-full h-[400px] bg-cyber-bg border-2 border-dashed border-cyber-cyan/30 rounded-lg flex flex-col justify-center items-center cursor-pointer transition-all hover:border-cyber-cyan hover:bg-cyber-bg/80 relative overflow-hidden group">
-                
-                <!-- Preview Image -->
-                <img id="preview-image" class="absolute w-full h-full object-contain opacity-0 transition-opacity duration-300 z-10" />
-                
-                <!-- Placeholder -->
-                <div id="placeholder" class="text-center z-0 transition-opacity duration-300">
-                    <i class="fa-solid fa-cloud-arrow-up text-5xl text-cyber-cyan mb-4 animate-bounce"></i>
-                    <h3 class="text-xl font-bold text-cyber-text mb-2">拖曳影像資料至此載入</h3>
-                    <p class="text-sm text-gray-500 font-mono">或點擊此處選擇檔案 (JPG/PNG)</p>
-                </div>
-
-                <!-- Overlay Hint -->
-                <div class="absolute bottom-4 right-4 bg-cyber-dark/80 px-3 py-1 rounded text-xs text-cyber-yellow font-mono border border-cyber-yellow opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                    [ SYSTEM: WAITING_FOR_INPUT ]
-                </div>
-            </div>
-        </div>
-
-        <!-- Middle Section: Data Grids -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 1. 圖片預覽區 -->
+        <section id="drop-zone" class="lg:col-span-2 bg-cyber-frame border-2 border-cyber-cyan rounded-lg relative min-h-[300px] flex flex-col items-center justify-center overflow-hidden transition-all duration-300 hover:shadow-[0_0_15px_#00fff9]">
             
-            <!-- Gear List (Yellow) -->
-            <div class="bg-cyber-bg border-l-4 border-cyber-yellow p-1 rounded-r-lg shadow-[0_0_15px_rgba(252,236,12,0.1)]">
-                <div class="bg-cyber-dark/50 h-full p-4 rounded relative overflow-hidden">
-                    <h2 class="text-cyber-yellow font-bold text-xl mb-4 flex items-center font-mono border-b border-cyber-yellow/30 pb-2">
-                        <i class="fa-solid fa-camera mr-2"></i> [ 裝備清單 // GEAR_LIST ]
-                    </h2>
-                    <div id="gear-list-content" class="font-mono text-sm leading-relaxed space-y-2 min-h-[150px]">
-                        <p class="text-gray-500 italic">>> 等待數據注入...</p>
-                    </div>
-                </div>
+            <!-- 預設提示 -->
+            <div id="upload-hint" class="text-center p-8 cursor-pointer">
+                <p class="font-title text-xl md:text-2xl text-cyber-cyan mb-4 animate-pulse">>> 拖曳影像資料至此載入 <<</p>
+                <p class="text-cyber-text opacity-70 font-mono text-sm">[ 支援 JPG, JPEG, PNG, TIFF, WEBP ]</p>
+                <button onclick="document.getElementById('file-input').click()" class="mt-6 px-6 py-2 border border-cyber-cyan text-cyber-cyan hover:bg-cyber-cyan hover:text-black transition-colors font-bold font-mono">
+                    // 瀏覽檔案 //
+                </button>
             </div>
 
-            <!-- Exposure Data (Pink) -->
-            <div class="bg-cyber-bg border-l-4 border-cyber-pink p-1 rounded-r-lg shadow-[0_0_15px_rgba(254,0,86,0.1)]">
-                <div class="bg-cyber-dark/50 h-full p-4 rounded relative overflow-hidden">
-                    <h2 class="text-cyber-pink font-bold text-xl mb-4 flex items-center font-mono border-b border-cyber-pink/30 pb-2">
-                        <i class="fa-solid fa-bolt mr-2"></i> [ 前世今生 // EXPOSURE ]
-                    </h2>
-                    <div id="exposure-content" class="font-mono text-sm leading-relaxed space-y-2 min-h-[150px]">
-                        <p class="text-gray-500 italic">>> 等待數據注入...</p>
-                    </div>
-                </div>
+            <!-- 圖片顯示 -->
+            <img id="preview-image" src="" alt="Preview" class="hidden max-h-[500px] w-auto object-contain p-2 z-10">
+            
+            <!-- Hover 警告 (模仿 Python 版) -->
+            <div id="hover-warning" class="hidden absolute pointer-events-none bg-cyber-yellow text-cyber-dark font-bold p-2 rounded z-20 shadow-lg transform translate-x-4 translate-y-4">
+                [ 警告：偵測到手指輸入 ]<br>點啊，你給我點啊
             </div>
+
+            <input type="file" id="file-input" multiple accept="image/*" onchange="handleFiles(this.files)">
+        </section>
+
+        <!-- 進度條 -->
+        <div id="progress-container" class="lg:col-span-2 hidden">
+            <div class="w-full bg-cyber-dark border border-cyber-cyan h-2">
+                <div id="progress-bar" class="bg-cyber-cyan h-full w-0 transition-all duration-300"></div>
+            </div>
+            <p class="text-xs text-cyber-cyan font-mono mt-1 animate-pulse">ANALYZING NEURAL LINK...</p>
         </div>
 
-        <!-- Control Bar -->
-        <div class="flex justify-center mt-2">
-            <button id="export-btn" class="bg-cyber-green/10 hover:bg-cyber-green/20 text-cyber-green border border-cyber-green font-bold py-3 px-8 rounded flex items-center gap-2 transition-all hover:shadow-[0_0_15px_rgba(57,255,20,0.3)] disabled:opacity-50 disabled:cursor-not-allowed">
-                <i class="fa-solid fa-file-export"></i> 輸出照片身份證 (.txt)
+        <!-- 2. 裝備清單 -->
+        <section class="bg-cyber-frame border-2 border-cyber-yellow rounded-lg p-4 flex flex-col h-full min-h-[300px]">
+            <h2 class="text-xl font-bold text-cyber-yellow mb-4 border-b border-cyber-yellow pb-2 font-title">
+                [ 裝備清單 // GEAR_LIST ]
+            </h2>
+            <div id="gear-list-content" class="typewriter-text text-cyber-text text-sm md:text-base flex-grow overflow-y-auto pr-2">
+                <!-- 內容由 JS 填充 -->
+                <span class="opacity-50 text-gray-400">WAITING FOR DATA STREAM...</span>
+            </div>
+        </section>
+
+        <!-- 3. 前世今生 -->
+        <section class="bg-cyber-frame border-2 border-cyber-pink rounded-lg p-4 flex flex-col h-full min-h-[300px]">
+            <h2 class="text-xl font-bold text-cyber-pink mb-4 border-b border-cyber-pink pb-2 font-title">
+                [ 前世今生 // EXPOSURE_DATA ]
+            </h2>
+            <div id="exposure-data-content" class="typewriter-text text-cyber-text text-sm md:text-base flex-grow overflow-y-auto pr-2">
+                <!-- 內容由 JS 填充 -->
+                <span class="opacity-50 text-gray-400">WAITING FOR DATA STREAM...</span>
+            </div>
+        </section>
+
+        <!-- 4. 控制按鈕區 -->
+        <section class="lg:col-span-2 flex flex-col md:flex-row gap-4 justify-between items-center mt-4">
+            <button onclick="prevImage()" class="w-full md:w-1/4 py-3 bg-transparent border-2 border-cyber-cyan text-cyber-cyan font-bold rounded hover:bg-cyber-cyan hover:text-black transition-all font-title glitch-hover">
+                &lt; 上一張
             </button>
-        </div>
+            
+            <button onclick="exportToTxt()" class="w-full md:w-1/2 py-3 bg-cyber-green text-black font-bold rounded shadow-[0_0_15px_#39ff14] hover:bg-white transition-all font-title transform hover:scale-105">
+                >> 輸出照片身份證 <<
+            </button>
+
+            <button onclick="nextImage()" class="w-full md:w-1/4 py-3 bg-transparent border-2 border-cyber-cyan text-cyber-cyan font-bold rounded hover:bg-cyber-cyan hover:text-black transition-all font-title glitch-hover">
+                下一張 &gt;
+            </button>
+        </section>
 
     </main>
 
-    <!-- Footer -->
-    <footer class="bg-cyber-bg border-t border-cyber-dark p-6 mt-auto">
-        <div class="max-w-7xl mx-auto flex flex-col items-center justify-center text-center gap-2">
-            <p class="text-gray-400 text-sm">
-                程式設計：<span class="text-cyber-cyan">賀禎禎攝影教室</span>
-            </p>
-            <p class="text-gray-500 text-xs font-mono">
-                連絡方式：<a href="mailto:hojenjen2018@gmail.com" class="hover:text-cyber-pink transition-colors">hojenjen2018@gmail.com</a>
-            </p>
-            <p class="text-[10px] text-gray-700 mt-2 font-mono">
-                © 2025 KUSO EXIF VIEWER. ALL RIGHTS RESERVED.
-            </p>
-        </div>
+    <!-- 底部狀態列 -->
+    <footer class="w-full bg-black p-2 border-t border-gray-800 mt-6">
+        <p id="system-status" class="text-xs font-mono text-cyber-cyan">SYSTEM STATUS: WAITING FOR INPUT...</p>
     </footer>
 
-    <!-- Quote Modal -->
-    <div id="quote-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
-        <div class="bg-cyber-bg border-2 border-cyber-pink max-w-lg w-[90%] p-1 relative transform scale-95 transition-transform duration-300" id="quote-box">
-            <div class="bg-cyber-dark p-6 text-center relative overflow-hidden">
-                <!-- Decorative Lines -->
-                <div class="absolute top-0 left-0 w-full h-1 bg-cyber-pink"></div>
-                <div class="absolute bottom-0 left-0 w-full h-1 bg-cyber-pink"></div>
-                
-                <h3 class="text-cyber-pink font-mono text-sm mb-4 tracking-widest">
-                    // SYSTEM_OVERRIDE // 靈魂拷問程序 //
+    <!-- 隨機金句彈跳視窗 (Modal) -->
+    <div id="quote-modal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-80 z-50 hidden" onclick="closeModal()">
+        <div class="bg-cyber-frame border-2 border-cyber-pink w-[90%] max-w-lg p-1 shadow-[0_0_30px_#fe0056] transform scale-95 transition-transform duration-200" onclick="event.stopPropagation()">
+            <div class="border border-cyber-pink p-6 flex flex-col items-center text-center">
+                <h3 class="text-cyber-pink font-mono mb-4 text-lg">
+                    // SYSTEM_OVERRIDE // 靈魂拷問程序啟動 //
                 </h3>
-                
-                <p id="quote-text" class="text-xl md:text-2xl font-bold text-white leading-relaxed mb-8 neon-text-pink">
-                    載入中...
+                <p id="quote-text" class="text-cyber-text text-xl md:text-2xl font-bold mb-8 leading-relaxed">
+                    <!-- 毒雞湯 -->
                 </p>
-
-                <button id="close-modal" class="bg-cyber-yellow text-cyber-dark font-bold py-2 px-6 rounded hover:bg-white transition-colors text-lg">
-                    [ 點擊關閉 ]
-                </button>
+                <p class="text-cyber-yellow font-bold text-lg animate-pulse cursor-pointer hover:underline" onclick="closeModal()">
+                    [ 點擊任意處關閉 ]
+                </p>
             </div>
         </div>
     </div>
 
+    <!-- JavaScript 邏輯 -->
     <script>
-        // Data Sources from Python Version
+        // --- 資料庫 ---
         const SOUL_QUOTES = [
             "你不是升級器材，是延後面對實力", "防潮箱是攝影師的夢想冰櫃", "器材全新，作品全無",
             "鏡頭越貴，越不敢帶出門", "鏡頭比你的人生規劃清楚", "開箱拍得比作品認真",
@@ -251,239 +251,364 @@
         ];
 
         const BRAND_COMMENTS = {
-            "canon": "Canon（佳能）<br>👉 「佳能：大家第一台相機，老師、記者、婚攝都用它。」",
-            "nikon": "Nikon（尼康）<br>👉 「尼康：我不跟流行，我只跟光線講道理。」",
-            "fujifilm": "Fujifilm（富士）<br>👉 「富士：哇，你是富家子弟，連顏色都很有教養。」",
-            "panasonic": "Panasonic（松下）<br>👉 「松下：我拍照還行，但我其實是來拍電影的。」",
-            "olympus": "OM System / Olympus<br>👉 「奧林巴斯：我很小，但我陪你上山下海。」",
-            "om digital": "OM System / Olympus<br>👉 「奧林巴斯：我很小，但我陪你上山下海。」",
-            "leica": "Leica（徠卡）<br>👉 「徠卡：你買的不是相機，是信仰與紅點。」",
-            "pentax": "Pentax（賓得）<br>👉 「賓得：大家都忘了我，但我自己很驕傲。」",
-            "hasselblad": "Hasselblad（哈蘇）<br>👉 「哈蘇：我一張照片，等於你一台電腦。」",
-            "blackmagic": "Blackmagic Design<br>👉 「Blackmagic：拍照？不，我只活在剪接軟體裡。」",
-            "sony": "Sony（索尼）<br>👉 「Sony：對焦比你人生目標還快。」",
-            "apple": "Apple（蘋果）<br>👉 「你買的不是手機，是生態系入場券。」",
-            "iphone": "Apple（蘋果）<br>👉 「你買的不是手機，是生態系入場券。」",
-            "samsung": "Samsung（三星）<br>👉 「型號多到連自己都需要分類表。」",
-            "google": "Google（Pixel）<br>👉 「硬體普通，但我是 AI 親兒子。」",
-            "pixel": "Google（Pixel）<br>👉 「硬體普通，但我是 AI 親兒子。」"
-            // (為了保持簡潔，其他品牌邏輯通用，若無特定則顯示無)
+            "canon": "Canon（佳能）\n👉 「佳能：大家第一台相機，老師、記者、婚攝都用它。」",
+            "nikon": "Nikon（尼康）\n👉 「尼康：我不跟流行，我只跟光線講道理。」",
+            "fujifilm": "Fujifilm（富士）\n👉 「富士：哇，你是富家子弟，連顏色都很有教養。」",
+            "panasonic": "Panasonic（松下）\n👉 「松下：我拍照還行，但我其實是來拍電影的。」",
+            "olympus": "OM System / Olympus\n👉 「奧林巴斯：我很小，但我陪你上山下海。」",
+            "om digital": "OM System / Olympus\n👉 「奧林巴斯：我很小，但我陪你上山下海。」",
+            "leica": "Leica（徠卡）\n👉 「徠卡：你買的不是相機，是信仰與紅點。」",
+            "pentax": "Pentax（賓得）\n👉 「賓得：大家都忘了我，但我自己很驕傲。」",
+            "hasselblad": "Hasselblad（哈蘇）\n👉 「哈蘇：我一張照片，等於你一台電腦。」",
+            "blackmagic": "Blackmagic Design\n👉 「Blackmagic：拍照？不，我只活在剪接軟體裡。」",
+            "phase one": "Phase One\n👉 「Phase One：普通人不認識我，有錢人不需要解釋。」",
+            "gopro": "GoPro\n👉 「GoPro：你在跳傘，我在幫你留遺照。」",
+            "dji": "DJI\n👉 「DJI：我本來是無人機，順便統治影像界。」",
+            "insta360": "Insta360\n👉 「Insta360：先拍再說，反正角度之後再選。」",
+            "kodak": "Kodak（柯達）\n👉 「柯達：我沒落了，但你的青春有我。」",
+            "agfa": "AgfaPhoto\n👉 「AgfaPhoto：你不知道我是誰，但我一直都在。」",
+            "benq": "BenQ（明基）\n👉 「BenQ：我螢幕很強，相機…也算有誠意。」",
+            "aigo": "Aigo（愛國者）\n👉 「Aigo：名字很熱血，價格更熱血。」",
+            "flashback": "Flashback\n👉 「Flashback：我不是老，是故意復古。」",
+            "polaroid": "Polaroid（寶麗來）\n👉 「Polaroid：拍完就出來，人生不能重來。」",
+            "ricoh": "Ricoh（理光）\n👉 「Ricoh：懂的人就懂，不懂的人一直問為什麼。」",
+            "rollei": "Rollei\n👉 「Rollei：德國老靈魂，數位新身體。」",
+            "vivitar": "Vivitar\n👉 「Vivitar：名字很響，存在感很佛。」",
+            "yashica": "Yashica（雅西卡）\n👉 「Yashica：我以前很紅，現在靠回憶。」",
+            "z cam": "Z CAM\n👉 「Z CAM：你不知道我，但 Netflix 可能知道。」",
+            "apple": "Apple（蘋果）\n👉 「你買的不是手機，是生態系入場券。」",
+            "iphone": "Apple（蘋果）\n👉 「你買的不是手機，是生態系入場券。」",
+            "samsung": "Samsung（三星）\n👉 「型號多到連自己都需要分類表。」",
+            "google": "Google（Pixel）\n👉 「硬體普通，但我是 AI 親兒子。」",
+            "pixel": "Google（Pixel）\n👉 「硬體普通，但我是 AI 親兒子。」",
+            "xiaomi": "Xiaomi（小米）\n👉 「規格給滿，價格給甜，名字一直改。」",
+            "oneplus": "OnePlus（一加）\n👉 「當年旗艦殺手，現在自己變旗艦。」",
+            "motorola": "Motorola（摩托羅拉）\n👉 「我還活著，而且我會折。」",
+            "vivo": "vivo\n👉 「拍人像很美，名字永遠打小寫。」",
+            "oppo": "OPPO\n👉 「充電快到你還沒找好插座就滿了。」",
+            "realme": "Realme\n👉 「我年輕、我便宜、我一直出新機。」",
+            "iqoo": "iQOO\n👉 「性能怪獸，但名字像電競隊伍。」",
+            "nothing": "Nothing\n👉 「我什麼都沒有，但你就是會多看兩眼。」",
+            "infinix": "Infinix\n👉 「規格寫得很猛，價格低到不像真的。」",
+            "tecno": "Tecno\n👉 「你可能沒聽過我，但我賣得比你想像多。」",
+            "honor": "Honor（榮耀）\n👉 「我不是華為，但大家一直這樣看我。」",
+            "nokia": "Nokia（諾基亞）\n👉 「手機會壞，但我不會倒。」",
+            "htc": "HTC\n👉 「我曾經站在世界之巔。」"
         };
 
-        // DOM Elements
-        const dropZone = document.getElementById('drop-zone');
-        const fileInput = document.getElementById('file-input');
-        const previewImage = document.getElementById('preview-image');
-        const placeholder = document.getElementById('placeholder');
-        const gearListContent = document.getElementById('gear-list-content');
-        const exposureContent = document.getElementById('exposure-content');
-        const quoteModal = document.getElementById('quote-modal');
-        const quoteBox = document.getElementById('quote-box');
-        const quoteText = document.getElementById('quote-text');
-        const closeModal = document.getElementById('close-modal');
-        const exportBtn = document.getElementById('export-btn');
-
+        // --- 狀態管理 ---
+        let filesQueue = [];
+        let currentIndex = -1;
         let currentExifData = null;
 
-        // Event Listeners
-        dropZone.addEventListener('click', () => fileInput.click());
+        // --- DOM 元素 ---
+        const dropZone = document.getElementById('drop-zone');
+        const previewImg = document.getElementById('preview-image');
+        const uploadHint = document.getElementById('upload-hint');
+        const progressBar = document.getElementById('progress-bar');
+        const progressContainer = document.getElementById('progress-container');
+        const gearListEl = document.getElementById('gear-list-content');
+        const exposureDataEl = document.getElementById('exposure-data-content');
+        const statusLabel = document.getElementById('system-status');
+        const modal = document.getElementById('quote-modal');
+        const quoteText = document.getElementById('quote-text');
+        const hoverWarning = document.getElementById('hover-warning');
+
+        // --- 拖曳邏輯 ---
         dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
-            dropZone.classList.add('border-cyber-cyan', 'bg-cyber-bg/80');
+            dropZone.classList.add('border-cyber-pink');
         });
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('border-cyber-cyan', 'bg-cyber-bg/80');
+
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-cyber-pink');
         });
+
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
-            dropZone.classList.remove('border-cyber-cyan', 'bg-cyber-bg/80');
-            const file = e.dataTransfer.files[0];
-            if (file) handleFile(file);
-        });
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) handleFile(file);
+            dropZone.classList.remove('border-cyber-pink');
+            if (e.dataTransfer.files.length) {
+                handleFiles(e.dataTransfer.files);
+            }
         });
 
-        // Modal Logic
-        function showQuote() {
-            const randomQuote = SOUL_QUOTES[Math.floor(Math.random() * SOUL_QUOTES.length)];
-            quoteText.textContent = randomQuote;
+        // --- 滑鼠懸停邏輯 (致敬原作) ---
+        previewImg.addEventListener('mouseenter', (e) => {
+            if (currentIndex !== -1) {
+                hoverWarning.classList.remove('hidden');
+                updateHoverPosition(e);
+            }
+        });
+
+        previewImg.addEventListener('mousemove', (e) => {
+            if (currentIndex !== -1) {
+                updateHoverPosition(e);
+            }
+        });
+
+        previewImg.addEventListener('mouseleave', () => {
+            hoverWarning.classList.add('hidden');
+        });
+
+        previewImg.addEventListener('click', () => {
+             // 點擊圖片無動作，或可全螢幕 (網頁版限制較多，此處致敬原作"點啊")
+        });
+
+        function updateHoverPosition(e) {
+            // 計算相對於 drop-zone 的位置
+            const rect = dropZone.getBoundingClientRect();
+            let x = e.clientX - rect.left + 20;
+            let y = e.clientY - rect.top + 20;
             
-            quoteModal.classList.remove('hidden');
-            // Small delay for transition
-            setTimeout(() => {
-                quoteModal.classList.remove('opacity-0');
-                quoteBox.classList.remove('scale-95');
-                quoteBox.classList.add('scale-100');
-            }, 10);
+            // 邊界檢查
+            if(x > rect.width - 200) x = rect.width - 200;
+            if(y > rect.height - 100) y = rect.height - 100;
+
+            hoverWarning.style.left = `${x}px`;
+            hoverWarning.style.top = `${y}px`;
         }
 
-        closeModal.addEventListener('click', () => {
-            quoteModal.classList.add('opacity-0');
-            quoteBox.classList.remove('scale-100');
-            quoteBox.classList.add('scale-95');
-            setTimeout(() => {
-                quoteModal.classList.add('hidden');
-            }, 300);
-        });
 
-        // Main File Handling
-        function handleFile(file) {
-            if (!file.type.match('image.*')) {
-                alert("只能讀取影像檔喔！(JPG/PNG/WebP)");
-                return;
-            }
+        // --- 檔案處理主邏輯 ---
+        function handleFiles(files) {
+            filesQueue = Array.from(files).filter(f => f.type.match('image.*'));
+            if (filesQueue.length === 0) return;
+            
+            currentIndex = 0;
+            processImage(filesQueue[currentIndex]);
+        }
 
-            // Read for Preview
+        function prevImage() {
+            if (filesQueue.length === 0) return;
+            currentIndex = (currentIndex - 1 + filesQueue.length) % filesQueue.length;
+            processImage(filesQueue[currentIndex]);
+        }
+
+        function nextImage() {
+            if (filesQueue.length === 0) return;
+            currentIndex = (currentIndex + 1) % filesQueue.length;
+            processImage(filesQueue[currentIndex]);
+        }
+
+        function processImage(file) {
+            // UI 重置
+            uploadHint.classList.add('hidden');
+            previewImg.classList.add('hidden');
+            progressContainer.classList.remove('hidden');
+            progressBar.style.width = '10%';
+            statusLabel.innerText = `ANALYZING TARGET: ${file.name}...`;
+
             const reader = new FileReader();
-            reader.onload = (e) => {
-                previewImage.src = e.target.result;
-                previewImage.classList.remove('opacity-0');
-                placeholder.classList.add('opacity-0');
+            reader.onload = function(e) {
+                previewImg.src = e.target.result;
+                previewImg.classList.remove('hidden');
                 
-                // Read EXIF
-                // We need to use the image object for EXIF.js
-                // But EXIF.js works better if we let it load the image itself or pass the element
-                // Here we use the previewImage element which now has the src
-                setTimeout(() => {
-                    EXIF.getData(previewImage, function() {
-                        const allMetaData = EXIF.getAllTags(this);
-                        processExifData(allMetaData, file);
-                        showQuote();
-                    });
-                }, 100);
+                // 模擬分析進度
+                setTimeout(() => { progressBar.style.width = '50%'; }, 200);
+
+                // 使用 EXIF.js
+                EXIF.getData(file, function() {
+                    const exifData = this.exifdata; // "this" refers to the image
+                    // 確保寬高
+                    const width = this.naturalWidth || exifData.PixelXDimension || 0;
+                    const height = this.naturalHeight || exifData.PixelYDimension || 0;
+                    
+                    analyzeData(exifData, file, width, height);
+                    
+                    progressBar.style.width = '100%';
+                    setTimeout(() => { progressContainer.classList.add('hidden'); }, 500);
+                    
+                    // 顯示隨機毒雞湯
+                    showRandomQuote();
+                });
             };
             reader.readAsDataURL(file);
         }
 
-        function processExifData(data, file) {
-            // Safe Getters
-            const make = data.Make || "Unknown Make";
-            const model = data.Model || "Unknown Model";
-            const lens = data.LensModel || "我沒有眼鏡";
-            const date = data.DateTimeOriginal || data.DateTime || "";
-            const width = data.PixelXDimension || "?";
-            const height = data.PixelYDimension || "?";
+        // --- 數據分析核心 ---
+        function analyzeData(data, file, width, height) {
+            const make = data.Make ? data.Make.trim() : "";
+            const model = data.Model ? data.Model.trim() : "";
+            const camName = (make || model) ? `${make} ${model}` : "我沒有名字";
+            const lensMake = data.LensMake || "";
+            const lensModel = data.LensModel || "";
+            let lensName = `${lensMake} ${lensModel}`.trim();
+            if (!lensName) lensName = "我沒有眼鏡";
+
+            const dateTime = data.DateTimeOriginal || data.DateTime || "";
+            const dateAnalysis = analyzeDateSentiment(dateTime);
+            
             const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            const gpsStr = (data.GPSLatitude) ? "包含座標數據" : "我沒有 GPS ，你別看了";
 
-            // Logic Port: Exposure Program
+            // 品牌毒舌
+            const brandQuote = getBrandQuote(make, model);
+
+            // 構建 Gear List
+            const basicText = `DEVICE_NAME : ${camName}
+LENS_MODEL  : ${lensName}
+CAPTURE_DATE: ${dateAnalysis}
+
+RESOLUTION  : ${width} x ${height} (${(width * height / 1000000).toFixed(1)} MP)
+FILE_SIZE   : ${sizeMB} MB
+GPS_STATUS  : ${gpsStr}
+
+==============================`;
+
+            // 更新 UI - Gear List
+            gearListEl.innerHTML = basicText + (brandQuote ? `<br><br><span class="text-cyber-yellow font-bold">${brandQuote}</span>` : "");
+
+
+            // 構建 Exposure Data
+            const exposureProgram = data.ExposureProgram;
             let expModeStr = "你亂拍對吧?";
-            const prog = data.ExposureProgram; // 1:M, 2:P, 3:Av, 4:Sv
-            if (prog === 1) expModeStr = "M = Magic Mode（魔法模式） 👉 新手以為進去會自動變強";
-            else if (prog === 2) expModeStr = "P = Pray Mode（祈禱模式） 👉 希望相機懂我";
-            else if (prog === 3) expModeStr = "Av = Art Vision 模式（藝術視角） 👉 背景能糊就是好照片";
-            else if (prog === 4) expModeStr = "S = Stop That Motion 模式 👉 不准動！";
-            else if (prog === 0) expModeStr = "Auto = Blame the Camera Mode（出事怪相機）";
+            // M=1, P=2, Av=3, Tv=4, Auto=? (Exif spec vary, usually normal program=2)
+            if (exposureProgram === 1) expModeStr = "M = Magic Mode（魔法模式） 👉 新手以為進去會自動變強";
+            else if (exposureProgram === 2) expModeStr = "P = Pray Mode（祈禱模式） 👉 希望相機懂我";
+            else if (exposureProgram === 3) expModeStr = "Av = Art Vision 模式（藝術視角） 👉 背景能糊就是好照片";
+            else if (exposureProgram === 4) expModeStr = "S = Stop That Motion 模式 👉 不准動！";
+            else expModeStr = "Auto = Blame the Camera Mode（出事怪相機）";
 
-            // Logic Port: Shutter
+            const iso = data.ISOSpeedRatings || "我讀不到別問我";
+            
             let shutterStr = "別看這，沒資料";
             if (data.ExposureTime) {
                 const val = parseFloat(data.ExposureTime);
-                if (val < 1) shutterStr = `1/${Math.round(1/val)}`;
-                else shutterStr = `${val} 秒`;
+                if (val > 0) {
+                    if (val < 1) shutterStr = `1/${Math.round(1/val)}`;
+                    else shutterStr = `${val} 秒`;
+                }
             }
 
-            // Logic Port: Aperture
             let fStr = "大概沒裝鏡頭吧?";
-            if (data.FNumber) fStr = `f/${data.FNumber}`;
-
-            // Logic Port: ISO
-            const isoStr = data.ISOSpeedRatings ? `ISO ${data.ISOSpeedRatings}` : "我讀不到別問我";
-
-            // Logic Port: Focal Length
-            const flStr = data.FocalLength ? `${data.FocalLength} mm` : "我累了";
-
-            // Logic Port: Brand Quote
-            let brandQuote = "";
-            const makeLower = make.toLowerCase();
-            const modelLower = model.toLowerCase();
-            
-            // Sony Special Case
-            if (makeLower.includes("sony")) {
-                if (modelLower.includes("xperia")) brandQuote = "Sony（索尼）<br>👉 「相機部門很強，但手機只想做給懂的人。」";
-                else brandQuote = BRAND_COMMENTS["sony"];
-            } else {
-                for (const key in BRAND_COMMENTS) {
-                    if (makeLower.includes(key)) {
-                        brandQuote = BRAND_COMMENTS[key];
-                        break;
-                    }
-                }
+            if (data.FNumber) {
+                fStr = `f/${parseFloat(data.FNumber)}`;
             }
 
-            // Logic Port: Date Analysis
-            let timeMachine = "我沒有生日";
-            if (date) {
-                // EXIF date format is usually "YYYY:MM:DD HH:MM:SS"
-                const parts = date.split(' ')[0].split(':');
-                if (parts.length === 3) {
-                    const year = parseInt(parts[0]);
-                    let comment = "";
-                    if (year >= 2024) comment = "「還在保固內」<br>👉 記憶新鮮、硬碟還沒壞<br>👉 「這不是舊照，是回顧」";
-                    else if (year >= 2023) comment = "「時間過好快模式」<br>👉 拍的時候明明是昨天<br>👉 「怎麼已經兩年了？」";
-                    else if (year >= 2022) comment = "「疫情後遺照（情感版）」<br>👉 人還在，感覺不一樣了<br>👉 「那時候的我，好瘦 / 好天真」";
-                    else if (year >= 2021) comment = "「時代交界線」<br>👉 拍照設備已被嫌舊<br>👉 「這是前一支手機拍的」";
-                    else if (year >= 2020) comment = "「哇靠，已經五年了」<br>👉 正式進入懷舊區<br>👉 「這張現在看有點感情」";
-                    else if (year >= 2015) comment = "「經典老照片」<br>👉 濾鏡開始有年代感<br>👉 「這是我以前的風格」（= 不想承認）";
-                    else if (year >= 2000) comment = "「歷史文件等級」<br>👉 人物外型差很多<br>👉 「那時候大家都這樣穿」";
-                    else comment = "「考古現場」<br>👉 畫質感人、表情真誠<br>👉 「這張要小心拿」";
-                    
-                    timeMachine = `${parts.join('-')} <br><br><span class="text-cyber-pink">[ 時光機分析 ]</span><br>${comment}`;
-                }
+            let flStr = "我累了";
+            if (data.FocalLength) {
+                flStr = `${parseFloat(data.FocalLength)} mm`;
             }
 
-            // Build HTML Strings
-            const gearHtml = `
-                <div class="mb-2"><span class="text-gray-400">DEVICE:</span> <span class="text-white font-bold">${make} ${model}</span></div>
-                <div class="mb-2"><span class="text-gray-400">LENS:</span> <span class="text-white">${lens}</span></div>
-                <div class="mb-2"><span class="text-gray-400">DATE:</span> <span class="text-cyber-green">${date}</span></div>
-                <div class="mb-2"><span class="text-gray-400">SIZE:</span> ${width}x${height} (${sizeMB} MB)</div>
-                ${brandQuote ? `<div class="mt-4 p-2 bg-cyber-yellow/10 border border-cyber-yellow text-cyber-yellow text-xs">${brandQuote}</div>` : ''}
-            `;
+            const wbMap = {0: "自動", 1: "手動"};
+            let wbStr = "色彩不重要";
+            if (data.WhiteBalance !== undefined) {
+                wbStr = wbMap[data.WhiteBalance] || "其他";
+            }
 
-            const exposureHtml = `
-                <div class="mb-2"><span class="text-gray-400">MODE:</span> <span class="text-cyber-pink">${expModeStr}</span></div>
-                <div class="mb-2"><span class="text-gray-400">SHUTTER:</span> <span class="text-white">${shutterStr}</span></div>
-                <div class="mb-2"><span class="text-gray-400">APERTURE:</span> <span class="text-white">${fStr}</span></div>
-                <div class="mb-2"><span class="text-gray-400">ISO:</span> <span class="text-white">${isoStr}</span></div>
-                <div class="mb-2"><span class="text-gray-400">FOCAL:</span> <span class="text-white">${flStr}</span></div>
-                <div class="mt-4 pt-4 border-t border-cyber-bg text-sm text-gray-300 leading-relaxed">${timeMachine}</div>
-            `;
+            let hyperStr = "這你不需要知道，反正你也不在乎";
+            try {
+                const fl = parseFloat(data.FocalLength);
+                const fn = parseFloat(data.FNumber);
+                if (fl > 0 && fn > 0) {
+                    const hf = ((Math.pow(fl, 2)) / (fn * 0.03) + fl) / 1000;
+                    hyperStr = `${hf.toFixed(2)} m`;
+                }
+            } catch(e) {}
 
-            // Update DOM
-            gearListContent.innerHTML = gearHtml;
-            exposureContent.innerHTML = exposureHtml;
+            const exposureText = `EXP_MODE    : ${expModeStr}
+ISO_SPEED   : ISO ${iso}
+SHUTTER     : ${shutterStr}
+APERTURE    : ${fStr}
+FOCAL_LEN   : ${flStr}
+WHITE_BAL   : ${wbStr}
+HYPERFOCAL  : ${hyperStr}`;
 
-            // Save Data for Export
+            // 更新 UI - Exposure Data
+            exposureDataEl.innerText = exposureText;
+
+            // 儲存當前數據以供輸出
             currentExifData = {
                 filename: file.name,
-                basic: gearHtml.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim(),
-                exposure: exposureHtml.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
+                basic: basicText + (brandQuote ? "\n" + brandQuote : ""),
+                exposure: exposureText
             };
-            exportBtn.disabled = false;
+            
+            statusLabel.innerText = "ANALYSIS COMPLETE. DATA READY.";
         }
 
-        // Export Function
-        exportBtn.addEventListener('click', () => {
-            if (!currentExifData) return;
-            
-            const textContent = `// CYBERDECK EXIF ANALYSIS LOG //\n` +
-                `TARGET_FILE: ${currentExifData.filename}\n\n` +
-                `[ GEAR_LIST ]\n${currentExifData.basic}\n\n` +
-                `[ EXPOSURE_DATA ]\n${currentExifData.exposure}\n\n` +
-                `GENERATED BY KUSO EXIF VIEWER (WEB)`;
-            
-            const blob = new Blob([textContent], { type: "text/plain;charset=utf-8" });
-            const filename = `EXIF_LOG_${new Date().toISOString().slice(0,10)}.txt`;
-            
-            // Simple download link creation
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = filename;
-            link.click();
-        });
+        // --- 輔助邏輯 ---
 
+        function getBrandQuote(make, model) {
+            const makeS = String(make).toLowerCase();
+            const modelS = String(model).toLowerCase();
+            
+            if (makeS.includes("sony")) {
+                if (modelS.includes("xperia")) return "Sony（索尼）\n👉 「相機部門很強，但手機只想做給懂的人。」";
+                return "Sony（索尼）\n👉 「Sony：對焦比你人生目標還快。」";
+            }
+
+            for (const [key, value] of Object.entries(BRAND_COMMENTS)) {
+                if (makeS.includes(key)) return value;
+            }
+            return "";
+        }
+
+        function analyzeDateSentiment(dateStr) {
+            if (!dateStr || dateStr === "") return "我沒有生日";
+            
+            // Exif date format is usually "YYYY:MM:DD HH:MM:SS"
+            // JS needs "YYYY-MM-DD" or similar
+            const cleanDate = String(dateStr).replace(/^(\d{4}):(\d{2}):(\d{2})/, "$1-$2-$3");
+            const dt = new Date(cleanDate);
+            
+            if (isNaN(dt.getTime())) return `${dateStr} (DATA CORRUPTED)`;
+
+            const year = dt.getFullYear();
+            const mainDate = `${year}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+            let comment = "";
+
+            if (year >= 2024) comment = "「還在保固內」\n👉 記憶新鮮、硬碟還沒壞\n👉 「這不是舊照，是回顧」";
+            else if (year >= 2023) comment = "「時間過好快模式」\n👉 拍的時候明明是昨天\n👉 「怎麼已經兩年了？」";
+            else if (year >= 2022) comment = "「疫情後遺照（情感版）」\n👉 人還在，感覺不一樣了\n👉 「那時候的我，好瘦 / 好天真」";
+            else if (year >= 2021) comment = "「時代交界線」\n👉 拍照設備已被嫌舊\n👉 「這是前一支手機拍的」";
+            else if (year >= 2020) comment = "「哇靠，已經五年了」\n👉 正式進入懷舊區\n👉 「這張現在看有點感情」";
+            else if (year >= 2015) comment = "「經典老照片」\n👉 濾鏡開始有年代感\n👉 「這是我以前的風格」（= 不想承認）";
+            else if (year >= 2000) comment = "「歷史文件等級」\n👉 人物外型差很多\n👉 「那時候大家都這樣穿」";
+            else comment = "「考古現場」\n👉 畫質感人、表情真誠\n👉 「這張要小心拿」";
+
+            return `${mainDate}\n\n[ 時光機分析 // TIME_MACHINE_LOG ]\n${comment}`;
+        }
+
+        // --- Modal & Export ---
+        function showRandomQuote() {
+            const quote = SOUL_QUOTES[Math.floor(Math.random() * SOUL_QUOTES.length)];
+            quoteText.innerText = quote;
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            modal.classList.add('hidden');
+        }
+
+        function exportToTxt() {
+            if (!currentExifData) {
+                alert("NO DATA LOADED // 無法輸出空數據");
+                return;
+            }
+            
+            const content = `// CYBERDECK EXIF ANALYSIS LOG //
+TARGET_FILE: ${currentExifData.filename}
+
+[ GEAR_LIST ]
+${currentExifData.basic}
+
+[ EXPOSURE_DATA ]
+${currentExifData.exposure}
+`;
+            const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${currentExifData.filename}_DATA_LOG.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            alert("檔案已輸出，去找吧，我都存在 one peace了");
+        }
     </script>
 </body>
 </html>
