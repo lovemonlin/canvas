@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEO-TOKYO // EXIF_DECK v2.077</title>
+    <title>NEO-TOKYO // EXIF_DECK v2.077_PATCHED</title>
     <!-- 引入 Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <!-- 引入 Tailwind CSS -->
@@ -96,7 +96,7 @@
         }
 
         /* 隱藏原生 input */
-        input[type="file"] {
+        .hidden-input {
             display: none;
         }
         
@@ -121,24 +121,38 @@
         <!-- 1. 圖片預覽區 -->
         <section id="drop-zone" class="lg:col-span-2 bg-cyber-frame border-2 border-cyber-cyan rounded-lg relative min-h-[300px] flex flex-col items-center justify-center overflow-hidden transition-all duration-300 hover:shadow-[0_0_15px_#00fff9]">
             
+            <!-- 計數器 -->
+            <div id="image-counter" class="absolute top-2 right-2 text-cyber-yellow font-mono z-20 bg-black/70 px-3 py-1 rounded border border-cyber-yellow hidden">
+                [ QUEUE: 0 / 0 ]
+            </div>
+
             <!-- 預設提示 -->
-            <div id="upload-hint" class="text-center p-8 cursor-pointer">
+            <div id="upload-hint" class="text-center p-8 z-10 w-full max-w-2xl">
                 <p class="font-title text-xl md:text-2xl text-cyber-cyan mb-4 animate-pulse">>> 拖曳影像資料至此載入 <<</p>
-                <p class="text-cyber-text opacity-70 font-mono text-sm">[ 支援 JPG, JPEG, PNG, TIFF, WEBP ]</p>
-                <button onclick="document.getElementById('file-input').click()" class="mt-6 px-6 py-2 border border-cyber-cyan text-cyber-cyan hover:bg-cyber-cyan hover:text-black transition-colors font-bold font-mono">
-                    // 瀏覽檔案 //
-                </button>
+                <div class="flex flex-col md:flex-row gap-4 justify-center items-center mt-6 w-full">
+                    <button onclick="document.getElementById('file-input').click()" class="w-full md:w-auto px-6 py-2 border border-cyber-cyan text-cyber-cyan hover:bg-cyber-cyan hover:text-black transition-colors font-bold font-mono">
+                        // 選擇檔案 (多選) //
+                    </button>
+                    <button onclick="document.getElementById('folder-input').click()" class="w-full md:w-auto px-6 py-2 border border-cyber-pink text-cyber-pink hover:bg-cyber-pink hover:text-black transition-colors font-bold font-mono">
+                        // 選擇資料夾 (批次) //
+                    </button>
+                </div>
+                <p class="text-cyber-text opacity-70 font-mono text-sm mt-4">
+                    [ 提示：若需批次瀏覽，請拖曳多個檔案或使用資料夾按鈕 ]
+                </p>
             </div>
 
             <!-- 圖片顯示 -->
-            <img id="preview-image" src="" alt="Preview" class="hidden max-h-[500px] w-auto object-contain p-2 z-10">
+            <img id="preview-image" src="" alt="Preview" class="hidden max-h-[500px] w-auto object-contain p-2 z-10 pointer-events-auto cursor-pointer">
             
-            <!-- Hover 警告 (模仿 Python 版) -->
-            <div id="hover-warning" class="hidden absolute pointer-events-none bg-cyber-yellow text-cyber-dark font-bold p-2 rounded z-20 shadow-lg transform translate-x-4 translate-y-4">
+            <!-- Hover 警告 -->
+            <div id="hover-warning" class="hidden absolute pointer-events-none bg-cyber-yellow text-cyber-dark font-bold p-2 rounded z-20 shadow-lg whitespace-nowrap">
                 [ 警告：偵測到手指輸入 ]<br>點啊，你給我點啊
             </div>
 
-            <input type="file" id="file-input" multiple accept="image/*" onchange="handleFiles(this.files)">
+            <input type="file" id="file-input" class="hidden-input" multiple accept="image/*" onchange="handleFiles(this.files)">
+            <!-- 支援資料夾上傳 (webkitdirectory) -->
+            <input type="file" id="folder-input" class="hidden-input" multiple webkitdirectory directory onchange="handleFiles(this.files)">
         </section>
 
         <!-- 進度條 -->
@@ -173,7 +187,7 @@
 
         <!-- 4. 控制按鈕區 -->
         <section class="lg:col-span-2 flex flex-col md:flex-row gap-4 justify-between items-center mt-4">
-            <button onclick="prevImage()" class="w-full md:w-1/4 py-3 bg-transparent border-2 border-cyber-cyan text-cyber-cyan font-bold rounded hover:bg-cyber-cyan hover:text-black transition-all font-title glitch-hover">
+            <button onclick="prevImage()" class="w-full md:w-1/4 py-3 bg-transparent border-2 border-cyber-cyan text-cyber-cyan font-bold rounded hover:bg-cyber-cyan hover:text-black transition-all font-title glitch-hover disabled:opacity-50 disabled:cursor-not-allowed">
                 &lt; 上一張
             </button>
             
@@ -181,7 +195,7 @@
                 >> 輸出照片身份證 <<
             </button>
 
-            <button onclick="nextImage()" class="w-full md:w-1/4 py-3 bg-transparent border-2 border-cyber-cyan text-cyber-cyan font-bold rounded hover:bg-cyber-cyan hover:text-black transition-all font-title glitch-hover">
+            <button onclick="nextImage()" class="w-full md:w-1/4 py-3 bg-transparent border-2 border-cyber-cyan text-cyber-cyan font-bold rounded hover:bg-cyber-cyan hover:text-black transition-all font-title glitch-hover disabled:opacity-50 disabled:cursor-not-allowed">
                 下一張 &gt;
             </button>
         </section>
@@ -212,7 +226,7 @@
 
     <!-- JavaScript 邏輯 -->
     <script>
-        // --- 資料庫 ---
+        // --- 資料庫 (保持不變) ---
         const SOUL_QUOTES = [
             "你不是升級器材，是延後面對實力", "防潮箱是攝影師的夢想冰櫃", "器材全新，作品全無",
             "鏡頭越貴，越不敢帶出門", "鏡頭比你的人生規劃清楚", "開箱拍得比作品認真",
@@ -313,6 +327,7 @@
         const modal = document.getElementById('quote-modal');
         const quoteText = document.getElementById('quote-text');
         const hoverWarning = document.getElementById('hover-warning');
+        const imageCounter = document.getElementById('image-counter');
 
         // --- 拖曳邏輯 ---
         dropZone.addEventListener('dragover', (e) => {
@@ -351,19 +366,14 @@
             hoverWarning.classList.add('hidden');
         });
 
-        previewImg.addEventListener('click', () => {
-             // 點擊圖片無動作，或可全螢幕 (網頁版限制較多，此處致敬原作"點啊")
-        });
-
         function updateHoverPosition(e) {
-            // 計算相對於 drop-zone 的位置
             const rect = dropZone.getBoundingClientRect();
             let x = e.clientX - rect.left + 20;
             let y = e.clientY - rect.top + 20;
             
             // 邊界檢查
             if(x > rect.width - 200) x = rect.width - 200;
-            if(y > rect.height - 100) y = rect.height - 100;
+            if(y > rect.height - 50) y = rect.height - 50;
 
             hoverWarning.style.left = `${x}px`;
             hoverWarning.style.top = `${y}px`;
@@ -372,22 +382,52 @@
 
         // --- 檔案處理主邏輯 ---
         function handleFiles(files) {
-            filesQueue = Array.from(files).filter(f => f.type.match('image.*'));
-            if (filesQueue.length === 0) return;
+            // 放寬過濾條件：除了 MIME type，也檢查副檔名
+            const validExtensions = ['.jpg', '.jpeg', '.png', '.tiff', '.webp', '.gif', '.bmp', '.heic'];
             
+            const newFiles = Array.from(files).filter(f => {
+                const isMime = f.type.startsWith('image/');
+                const name = f.name.toLowerCase();
+                // 有些系統 MIME type 判斷不准，補強副檔名判斷
+                const isExt = validExtensions.some(ext => name.endsWith(ext));
+                return isMime || isExt;
+            });
+
+            if (newFiles.length === 0) {
+                alert("未偵測到支援的影像格式 // NO VALID IMAGES DETECTED\n請確認檔案是否為圖片。");
+                return;
+            }
+            
+            // 嘗試依照檔名排序 (模擬資料夾順序)
+            newFiles.sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: 'base'}));
+
+            filesQueue = newFiles;
             currentIndex = 0;
+            
+            updateCounter();
             processImage(filesQueue[currentIndex]);
+        }
+
+        function updateCounter() {
+            if (filesQueue.length > 0) {
+                imageCounter.classList.remove('hidden');
+                imageCounter.innerText = `[ QUEUE: ${currentIndex + 1} / ${filesQueue.length} ]`;
+            } else {
+                imageCounter.classList.add('hidden');
+            }
         }
 
         function prevImage() {
             if (filesQueue.length === 0) return;
             currentIndex = (currentIndex - 1 + filesQueue.length) % filesQueue.length;
+            updateCounter();
             processImage(filesQueue[currentIndex]);
         }
 
         function nextImage() {
             if (filesQueue.length === 0) return;
             currentIndex = (currentIndex + 1) % filesQueue.length;
+            updateCounter();
             processImage(filesQueue[currentIndex]);
         }
 
@@ -409,8 +449,7 @@
 
                 // 使用 EXIF.js
                 EXIF.getData(file, function() {
-                    const exifData = this.exifdata; // "this" refers to the image
-                    // 確保寬高
+                    const exifData = this.exifdata || {};
                     const width = this.naturalWidth || exifData.PixelXDimension || 0;
                     const height = this.naturalHeight || exifData.PixelYDimension || 0;
                     
@@ -423,6 +462,12 @@
                     showRandomQuote();
                 });
             };
+            // 處理讀取錯誤
+            reader.onerror = function() {
+                alert("檔案讀取失敗，請確認檔案權限。");
+                progressContainer.classList.add('hidden');
+            };
+            
             reader.readAsDataURL(file);
         }
 
@@ -440,7 +485,8 @@
             const dateAnalysis = analyzeDateSentiment(dateTime);
             
             const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-            const gpsStr = (data.GPSLatitude) ? "包含座標數據" : "我沒有 GPS ，你別看了";
+            // 經緯度轉換稍微複雜，這裡簡化判斷
+            const gpsStr = (data.GPSLatitude && data.GPSLongitude) ? "包含座標數據" : "我沒有 GPS ，你別看了";
 
             // 品牌毒舌
             const brandQuote = getBrandQuote(make, model);
@@ -456,14 +502,11 @@ GPS_STATUS  : ${gpsStr}
 
 ==============================`;
 
-            // 更新 UI - Gear List
             gearListEl.innerHTML = basicText + (brandQuote ? `<br><br><span class="text-cyber-yellow font-bold">${brandQuote}</span>` : "");
-
 
             // 構建 Exposure Data
             const exposureProgram = data.ExposureProgram;
             let expModeStr = "你亂拍對吧?";
-            // M=1, P=2, Av=3, Tv=4, Auto=? (Exif spec vary, usually normal program=2)
             if (exposureProgram === 1) expModeStr = "M = Magic Mode（魔法模式） 👉 新手以為進去會自動變強";
             else if (exposureProgram === 2) expModeStr = "P = Pray Mode（祈禱模式） 👉 希望相機懂我";
             else if (exposureProgram === 3) expModeStr = "Av = Art Vision 模式（藝術視角） 👉 背景能糊就是好照片";
@@ -515,10 +558,8 @@ FOCAL_LEN   : ${flStr}
 WHITE_BAL   : ${wbStr}
 HYPERFOCAL  : ${hyperStr}`;
 
-            // 更新 UI - Exposure Data
             exposureDataEl.innerText = exposureText;
 
-            // 儲存當前數據以供輸出
             currentExifData = {
                 filename: file.name,
                 basic: basicText + (brandQuote ? "\n" + brandQuote : ""),
@@ -529,7 +570,6 @@ HYPERFOCAL  : ${hyperStr}`;
         }
 
         // --- 輔助邏輯 ---
-
         function getBrandQuote(make, model) {
             const makeS = String(make).toLowerCase();
             const modelS = String(model).toLowerCase();
@@ -547,12 +587,8 @@ HYPERFOCAL  : ${hyperStr}`;
 
         function analyzeDateSentiment(dateStr) {
             if (!dateStr || dateStr === "") return "我沒有生日";
-            
-            // Exif date format is usually "YYYY:MM:DD HH:MM:SS"
-            // JS needs "YYYY-MM-DD" or similar
             const cleanDate = String(dateStr).replace(/^(\d{4}):(\d{2}):(\d{2})/, "$1-$2-$3");
             const dt = new Date(cleanDate);
-            
             if (isNaN(dt.getTime())) return `${dateStr} (DATA CORRUPTED)`;
 
             const year = dt.getFullYear();
@@ -571,7 +607,6 @@ HYPERFOCAL  : ${hyperStr}`;
             return `${mainDate}\n\n[ 時光機分析 // TIME_MACHINE_LOG ]\n${comment}`;
         }
 
-        // --- Modal & Export ---
         function showRandomQuote() {
             const quote = SOUL_QUOTES[Math.floor(Math.random() * SOUL_QUOTES.length)];
             quoteText.innerText = quote;
