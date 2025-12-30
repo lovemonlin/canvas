@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEO-TOKYO // EXIF_DECK v2.077_PATCHED</title>
+    <title>NEO-TOKYO // EXIF_DECK v2.077_HOTFIX</title>
     <!-- 引入 Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <!-- 引入 Tailwind CSS -->
@@ -104,6 +104,13 @@
             white-space: pre-wrap;
             font-family: 'Share Tech Mono', 'Noto Sans TC', monospace;
         }
+
+        /* 拖曳時的高亮樣式 */
+        .drag-active {
+            border-color: #fe0056 !important;
+            box-shadow: 0 0 15px #fe0056, 0 0 20px #fe0056 inset !important;
+            background-color: rgba(254, 0, 86, 0.1) !important;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col font-sans crt-overlay">
@@ -127,9 +134,9 @@
             </div>
 
             <!-- 預設提示 -->
-            <div id="upload-hint" class="text-center p-8 z-10 w-full max-w-2xl">
+            <div id="upload-hint" class="text-center p-8 z-10 w-full max-w-2xl pointer-events-none">
                 <p class="font-title text-xl md:text-2xl text-cyber-cyan mb-4 animate-pulse">>> 拖曳影像資料至此載入 <<</p>
-                <div class="flex flex-col md:flex-row gap-4 justify-center items-center mt-6 w-full">
+                <div class="flex flex-col md:flex-row gap-4 justify-center items-center mt-6 w-full pointer-events-auto">
                     <button onclick="document.getElementById('file-input').click()" class="w-full md:w-auto px-6 py-2 border border-cyber-cyan text-cyber-cyan hover:bg-cyber-cyan hover:text-black transition-colors font-bold font-mono">
                         // 選擇檔案 (多選) //
                     </button>
@@ -137,13 +144,13 @@
                         // 選擇資料夾 (批次) //
                     </button>
                 </div>
-                <p class="text-cyber-text opacity-70 font-mono text-sm mt-4">
+                <p class="text-cyber-text opacity-70 font-mono text-sm mt-4 pointer-events-auto">
                     [ 提示：若需批次瀏覽，請拖曳多個檔案或使用資料夾按鈕 ]
                 </p>
             </div>
 
             <!-- 圖片顯示 -->
-            <img id="preview-image" src="" alt="Preview" class="hidden max-h-[500px] w-auto object-contain p-2 z-10 pointer-events-auto cursor-pointer">
+            <img id="preview-image" src="" alt="Preview" class="hidden max-h-[500px] w-auto object-contain p-2 z-10 pointer-events-none">
             
             <!-- Hover 警告 -->
             <div id="hover-warning" class="hidden absolute pointer-events-none bg-cyber-yellow text-cyber-dark font-bold p-2 rounded z-20 shadow-lg whitespace-nowrap">
@@ -151,7 +158,6 @@
             </div>
 
             <input type="file" id="file-input" class="hidden-input" multiple accept="image/*" onchange="handleFiles(this.files)">
-            <!-- 支援資料夾上傳 (webkitdirectory) -->
             <input type="file" id="folder-input" class="hidden-input" multiple webkitdirectory directory onchange="handleFiles(this.files)">
         </section>
 
@@ -329,26 +335,55 @@
         const hoverWarning = document.getElementById('hover-warning');
         const imageCounter = document.getElementById('image-counter');
 
-        // --- 拖曳邏輯 ---
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('border-cyber-pink');
+        // --- 拖曳邏輯 (HOTFIX) ---
+        
+        // 1. 全域阻止瀏覽器預設行為 (避免直接打開圖片)
+        window.addEventListener('dragover', e => e.preventDefault(), false);
+        window.addEventListener('drop', e => e.preventDefault(), false);
+
+        // 2. Drop Zone 強制事件處理
+        // 使用陣列綁定，確保所有拖曳相關事件都被攔截
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
         });
 
-        dropZone.addEventListener('dragleave', (e) => {
+        function preventDefaults(e) {
             e.preventDefault();
-            dropZone.classList.remove('border-cyber-pink');
+            e.stopPropagation();
+        }
+
+        // 3. 視覺回饋
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
         });
 
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('border-cyber-pink');
-            if (e.dataTransfer.files.length) {
-                handleFiles(e.dataTransfer.files);
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dropZone.classList.add('drag-active');
+        }
+
+        function unhighlight(e) {
+            dropZone.classList.remove('drag-active');
+        }
+
+        // 4. 處理 Drop
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+
+            if (files && files.length > 0) {
+                handleFiles(files);
             }
-        });
+        }
+
 
         // --- 滑鼠懸停邏輯 (致敬原作) ---
+        // 修正：確保圖片不會干擾拖曳，但可以觸發 hover
         previewImg.addEventListener('mouseenter', (e) => {
             if (currentIndex !== -1) {
                 hoverWarning.classList.remove('hidden');
