@@ -173,7 +173,7 @@
             </p>
             <div class="text-center">
                 <button id="btn-close-modal" class="text-yellow-300 border border-yellow-300 px-6 py-2 hover:bg-yellow-300 hover:text-black font-bold transition-colors">
-                    [ ACKNOWLEDGE ]
+                    [ 關閉對話 ]
                 </button>
             </div>
         </div>
@@ -278,6 +278,8 @@
         let currentFiles = [];
         let currentIndex = -1;
         let currentExifCache = {};
+        // Add counter for quotes
+        let viewCount = 0;
 
         // --- DOM ELEMENTS ---
         const dropZone = document.getElementById('drop-zone');
@@ -509,8 +511,11 @@ HYPERFOCAL  : ${hyperStr}`;
                 exposure: exposureText
             };
 
-            // Show Random Quote
-            showRandomQuote();
+            // Show Random Quote (Logic: Every 5th image viewed)
+            viewCount++;
+            if (viewCount % 5 === 0) {
+                showRandomQuote();
+            }
         }
 
         // --- HELPERS ---
