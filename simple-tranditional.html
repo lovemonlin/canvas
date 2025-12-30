@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>簡轉繁 - 字幕工具箱 (Web版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <!-- 引入 OpenCC-JS -->
+    <script src="https://cdn.jsdelivr.net/npm/opencc-js@1.0.5/dist/umd/full.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #0f172a; color: #e2e8f0; }
+        .textarea-custom {
+            background-color: #1e293b;
+            color: #f8fafc;
+            border-color: #334155;
+        }
+        .textarea-custom:focus {
+            border-color: #3b82f6;
+            outline: none;
+            ring: 2px;
+        }
+        /* Loading animation */
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            border-top: 3px solid #3b82f6;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-slate-800 border-b border-slate-700 py-4 px-6 shadow-md z-10">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-white flex items-center">
+                <i class="fa-solid fa-language text-blue-500 mr-3"></i>
+                簡轉繁 - 字幕工具箱 <span class="ml-3 text-xs bg-slate-600 px-2 py-0.5 rounded text-slate-300">Web V1.0</span>
+            </h1>
+            <div class="flex items-center gap-4">
+                <span id="status-indicator" class="text-sm text-slate-400 flex items-center">
+                    <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span> 轉換引擎就緒
+                </span>
+                <a href="index.html" class="text-slate-400 hover:text-white text-sm transition-colors">
+                    <i class="fa-solid fa-home mr-1"></i> 回首頁
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow flex flex-col md:flex-row p-4 gap-4 max-w-7xl mx-auto w-full h-full overflow-hidden">
+        
+        <!-- Left: Input (Simplified) -->
+        <div class="flex-1 flex flex-col min-h-[300px]">
+            <div class="flex justify-between items-center mb-2 px-1">
+                <label class="font-bold text-slate-300 flex items-center">
+                    <i class="fa-solid fa-file-import mr-2 text-slate-500"></i> 簡體內容 / SRT
+                </label>
+                <div class="flex gap-2">
+                    <button onclick="document.getElementById('file-upload').click()" class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded transition-colors text-slate-300">
+                        <i class="fa-solid fa-upload mr-1"></i> 讀取檔案
+                    </button>
+                    <button id="clear-btn" class="text-xs bg-slate-700 hover:bg-red-900/50 text-red-400 hover:text-red-300 px-2 py-1 rounded transition-colors">
+                        清除
+                    </button>
+                    <input type="file" id="file-upload" class="hidden" accept=".txt,.srt,.ass,.sub">
+                </div>
+            </div>
+            <textarea id="input-text" class="flex-grow w-full p-4 rounded-xl textarea-custom resize-none text-lg leading-relaxed shadow-inner font-mono" 
+                placeholder="請在此貼上簡體文字或 SRT 字幕內容..."></textarea>
+            <div class="text-right text-xs text-slate-500 mt-1 px-1">
+                字數: <span id="input-count">0</span>
+            </div>
+        </div>
+
+        <!-- Center: Arrow (Desktop) / Down Arrow (Mobile) -->
+        <div class="flex md:flex-col justify-center items-center text-slate-500 gap-2">
+            <i class="fa-solid fa-arrow-right text-2xl hidden md:block"></i>
+            <i class="fa-solid fa-arrow-down text-2xl md:hidden"></i>
+        </div>
+
+        <!-- Right: Output (Traditional) -->
+        <div class="flex-1 flex flex-col min-h-[300px]">
+            <div class="flex justify-between items-center mb-2 px-1">
+                <label class="font-bold text-blue-400 flex items-center">
+                    <i class="fa-solid fa-file-signature mr-2"></i> 繁體結果
+                </label>
+                <button id="copy-btn" class="text-xs bg-blue-900/30 hover:bg-blue-800/50 text-blue-300 px-2 py-1 rounded transition-colors border border-blue-900/50">
+                    <i class="fa-regular fa-copy mr-1"></i> 複製內容
+                </button>
+            </div>
+            <textarea id="output-text" readonly class="flex-grow w-full p-4 rounded-xl textarea-custom resize-none text-lg leading-relaxed shadow-inner font-mono bg-slate-800/50" 
+                placeholder="轉換結果將顯示於此..."></textarea>
+            <div class="text-right text-xs text-slate-500 mt-1 px-1">
+                字數: <span id="output-count">0</span>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer Actions -->
+    <footer class="bg-slate-800 border-t border-slate-700 p-4">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-end gap-4">
+            <button id="save-txt-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center shadow-lg hover:shadow-emerald-500/20">
+                <i class="fa-solid fa-file-lines mr-2"></i> 儲存文字檔 (.txt)
+            </button>
+            <button id="save-srt-btn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center shadow-lg hover:shadow-blue-500/20">
+                <i class="fa-solid fa-film mr-2"></i> 儲存字幕檔 (.srt)
+            </button>
+        </div>
+    </footer>
+
+    <script>
+        const inputText = document.getElementById('input-text');
+        const outputText = document.getElementById('output-text');
+        const inputCount = document.getElementById('input-count');
+        const outputCount = document.getElementById('output-count');
+        const fileUpload = document.getElementById('file-upload');
+        const clearBtn = document.getElementById('clear-btn');
+        const copyBtn = document.getElementById('copy-btn');
+        const saveTxtBtn = document.getElementById('save-txt-btn');
+        const saveSrtBtn = document.getElementById('save-srt-btn');
+        const statusIndicator = document.getElementById('status-indicator');
+
+        let converter = null;
+
+        // 初始化 OpenCC
+        async function initConverter() {
+            try {
+                statusIndicator.innerHTML = '<div class="spinner mr-2"></div> 載入字典中...';
+                
+                // OpenCC Web 完整版載入
+                const OpenCC = window.OpenCC;
+                converter = await OpenCC.Converter({ from: 'cn', to: 'tw' });
+                
+                statusIndicator.innerHTML = '<span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span> 轉換引擎就緒';
+                // 如果已經有文字，立刻轉換
+                if(inputText.value) convertText();
+            } catch (e) {
+                console.error(e);
+                statusIndicator.innerHTML = '<span class="w-2 h-2 bg-red-500 rounded-full mr-2"></span> 引擎載入失敗';
+                // Fallback: 簡單字元對應 (如果 CDN 掛了，至少還能用簡單版)
+                // 這裡暫不實作複雜 Fallback，直接依賴 OpenCC
+            }
+        }
+
+        function convertText() {
+            if (!converter) return;
+            const text = inputText.value;
+            // OpenCC 轉換
+            const result = converter(text);
+            
+            outputText.value = result;
+            
+            // 更新計數
+            inputCount.textContent = text.length;
+            outputCount.textContent = result.length;
+        }
+
+        // 監聽輸入
+        inputText.addEventListener('input', convertText);
+
+        // 檔案讀取
+        fileUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                inputText.value = e.target.result;
+                convertText();
+            };
+            // 嘗試偵測編碼，這裡預設 UTF-8，因為網頁 FileReader 預設較好處理
+            reader.readAsText(file);
+            fileUpload.value = ''; // Reset
+        });
+
+        // 清除
+        clearBtn.addEventListener('click', () => {
+            inputText.value = '';
+            outputText.value = '';
+            inputCount.textContent = '0';
+            outputCount.textContent = '0';
+            inputText.focus();
+        });
+
+        // 複製
+        copyBtn.addEventListener('click', () => {
+            if (!outputText.value) return;
+            outputText.select();
+            document.execCommand('copy'); // Fallback for safety
+            // create temporary toast
+            const originalText = copyBtn.innerHTML;
+            copyBtn.innerHTML = '<i class="fa-solid fa-check mr-1"></i> 已複製';
+            setTimeout(() => copyBtn.innerHTML = originalText, 1500);
+        });
+
+        // 存檔邏輯
+        function saveFile(extension, typeName) {
+            const content = outputText.value;
+            if (!content) {
+                alert('沒有內容可以儲存喔！');
+                return;
+            }
+            
+            const now = new Date();
+            const timestamp = now.toISOString().slice(0,10).replace(/-/g,"") + "_" + now.toTimeString().slice(0,5).replace(/:/g,"");
+            const filename = `繁體_${timestamp}${extension}`;
+            
+            const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+            saveAs(blob, filename);
+        }
+
+        saveTxtBtn.addEventListener('click', () => saveFile('.txt', 'Text File'));
+        saveSrtBtn.addEventListener('click', () => saveFile('.srt', 'Subtitle File'));
+
+        // 啟動
+        initConverter();
+
+    </script>
+</body>
+</html>
