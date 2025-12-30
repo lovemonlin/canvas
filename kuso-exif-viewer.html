@@ -1,654 +1,489 @@
-import customtkinter as ctk
-from tkinterdnd2 import DND_FILES, TkinterDnD
-from tkinter import filedialog, messagebox, Menu
-from PIL import Image, ExifTags
-import os
-import platform
-import glob
-from datetime import datetime
-import random
-import threading
-import time
-
-# ==========================================
-# CYBERPUNK THEME CONFIG
-# ==========================================
-CYBER_DARK = "#050a0e"
-CYBER_BG_FRAME = "#111827"
-CYBER_CYAN = "#00fff9"
-CYBER_PINK = "#fe0056"
-CYBER_YELLOW = "#fcec0c"
-CYBER_GREEN = "#39ff14"
-CYBER_TEXT_MAIN = "#e0f7fa"
-
-FONT_TITLE = ("Impact", 20)
-FONT_HEADER = ("Microsoft JhengHei UI", 16, "bold")
-FONT_DATA = ("Consolas", 14)
-FONT_BUTTON = ("Microsoft JhengHei UI", 16, "bold")
-FONT_QUOTE = ("Microsoft JhengHei UI", 16, "bold") 
-
-ctk.set_appearance_mode("Dark")
-
-# --- 攝影毒雞湯 ---
-SOUL_QUOTES = [
-    "你不是升級器材，是延後面對實力", "防潮箱是攝影師的夢想冰櫃", "器材全新，作品全無",
-    "鏡頭越貴，越不敢帶出門", "鏡頭比你的人生規劃清楚", "開箱拍得比作品認真",
-    "器材買齊了，拍照還在找題材", "你不是器材黨，是逃避黨", "相機知道你很窮，但你裝作不在乎",
-    "技術沒進步，但配件越來越齊", "全手動只是讓錯誤更有尊嚴", "用 M 模式拍爛，不會比較高級",
-    "光圈全開不是風格，是失控", "快門亂轉，模糊當哲學", "ISO 爆表，叫情緒",
-    "不會測光，卻愛談光", "參數背得熟，畫面還是死", "你在控制相機，相機在懲罰你",
-    "曝光補償是你最後的希望", "白平衡亂跑，色彩還敢說「自然」", "模糊不是詩，是沒對焦",
-    "黑白不是深度，是遮羞", "極簡不是什麼都沒拍到", "留白留到像沒走近",
-    "對稱不是構圖，是怕出錯", "中央構圖用一輩子，還說是風格", "前景亂放叫設計",
-    "廣角貼臉叫震撼", "背景亂不是紀實，是不負責", "看不懂不是高級，是沒說清楚",
-    "模特漂亮，不是你的功勞", "散景不是情感，是背景糊掉", "眼神空，不是憂鬱，是沒引導",
-    "模特在撐，你在自爽", "姿勢一樣，只是換人", "修皮修到像塑膠，還說真實",
-    "人像不是拍臉部證件", "模特救了你，你還以為是自己", "偷拍不是街拍，是沒勇氣",
-    "被拒拍就說自己在做藝術", "後製不是創作，是急救", "濾鏡比內容重",
-    "顏色很猛，情緒為零", "修到不像人，還說自然", "Lightroom 不是贖罪券",
-    "修圖修到忘記原本想拍什麼", "對比拉滿，故事消失", "一鍵風格不是風格",
-    "HDR 不是讓人眼睛流血", "後製時間比思考時間長", "沒風格不叫多元",
-    "模仿太像，就是抄", "每張都不同，其實都不行", "黑暗不是深沉，是空",
-    "風格不是你說了算，是作品說了算", "拍很多，不代表拍得好", "快門累積，不等於成長",
-    "你說在找風格，其實在拖", "作品集像跳蚤市場", "你該刪的比該留的多",
-    "讚多不是證明，只是運氣", "讚少也不代表你是藝術家", "演算法不是你的敵人，是照妖鏡",
-    "被分享不代表被理解", "流量來得快，你也空得快", "標籤下得準，照片還是爛",
-    "文案比照片精彩", "為了流量拍，最後只剩流量", "熱門構圖不是你的風格",
-    "每張都想爆，其實沒一張站得住", "拍很久，不代表你進步", "老手亂拍，新手看不出來",
-    "新手拍得好，就是好", "聽不進批評的人最危險", "一直辯解，代表你知道不行",
-    "怪器材的人不想面對自己", "自稱藝術家的人通常最怕被看懂", "攝影不是頭銜",
-    "拍照不是逃避思考", "相機不會幫你做選擇", "好照片不用解釋",
-    "解釋越多，照片越弱", "看不出你想拍什麼", "「有感覺但說不出來」＝沒完成",
-    "技術到位，內容缺席", "拍得清楚，不等於拍得好", "你很努力，但照片沒收到",
-    "相機很高級，照片很普通", "這張不是爛，是浪費", "沒失敗，不代表成功",
-    "好照片不需要很多", "十張一張就很強", "刪照片也是創作",
-    "拍照是選擇，不是全收", "不拍，有時比亂拍好", "相機會過時，眼睛不會",
-    "看得少，拍再多都沒用", "你最後只會拍給自己看", "攝影不是證明你有多厲害",
-    "拍照，最後是在對付自己"
-]
-
-# --- 品牌評語資料庫 ---
-BRAND_COMMENTS = {
-    "canon": "Canon（佳能）\n👉 「佳能：大家第一台相機，老師、記者、婚攝都用它。」",
-    "nikon": "Nikon（尼康）\n👉 「尼康：我不跟流行，我只跟光線講道理。」",
-    "fujifilm": "Fujifilm（富士）\n👉 「富士：哇，你是富家子弟，連顏色都很有教養。」",
-    "panasonic": "Panasonic（松下）\n👉 「松下：我拍照還行，但我其實是來拍電影的。」",
-    "olympus": "OM System / Olympus\n👉 「奧林巴斯：我很小，但我陪你上山下海。」",
-    "om digital": "OM System / Olympus\n👉 「奧林巴斯：我很小，但我陪你上山下海。」",
-    "leica": "Leica（徠卡）\n👉 「徠卡：你買的不是相機，是信仰與紅點。」",
-    "pentax": "Pentax（賓得）\n👉 「賓得：大家都忘了我，但我自己很驕傲。」",
-    "hasselblad": "Hasselblad（哈蘇）\n👉 「哈蘇：我一張照片，等於你一台電腦。」",
-    "blackmagic": "Blackmagic Design\n👉 「Blackmagic：拍照？不，我只活在剪接軟體裡。」",
-    "phase one": "Phase One\n👉 「Phase One：普通人不認識我，有錢人不需要解釋。」",
-    "gopro": "GoPro\n👉 「GoPro：你在跳傘，我在幫你留遺照。」",
-    "dji": "DJI\n👉 「DJI：我本來是無人機，順便統治影像界。」",
-    "insta360": "Insta360\n👉 「Insta360：先拍再說，反正角度之後再選。」",
-    "kodak": "Kodak（柯達）\n👉 「柯達：我沒落了，但你的青春有我。」",
-    "agfa": "AgfaPhoto\n👉 「AgfaPhoto：你不知道我是誰，但我一直都在。」",
-    "benq": "BenQ（明基）\n👉 「BenQ：我螢幕很強，相機…也算有誠意。」",
-    "aigo": "Aigo（愛國者）\n👉 「Aigo：名字很熱血，價格更熱血。」",
-    "flashback": "Flashback\n👉 「Flashback：我不是老，是故意復古。」",
-    "polaroid": "Polaroid（寶麗來）\n👉 「Polaroid：拍完就出來，人生不能重來。」",
-    "ricoh": "Ricoh（理光）\n👉 「Ricoh：懂的人就懂，不懂的人一直問為什麼。」",
-    "rollei": "Rollei\n👉 「Rollei：德國老靈魂，數位新身體。」",
-    "vivitar": "Vivitar\n👉 「Vivitar：名字很響，存在感很佛。」",
-    "yashica": "Yashica（雅西卡）\n👉 「Yashica：我以前很紅，現在靠回憶。」",
-    "z cam": "Z CAM\n👉 「Z CAM：你不知道我，但 Netflix 可能知道。」",
-    "apple": "Apple（蘋果）\n👉 「你買的不是手機，是生態系入場券。」",
-    "iphone": "Apple（蘋果）\n👉 「你買的不是手機，是生態系入場券。」",
-    "samsung": "Samsung（三星）\n👉 「型號多到連自己都需要分類表。」",
-    "google": "Google（Pixel）\n👉 「硬體普通，但我是 AI 親兒子。」",
-    "pixel": "Google（Pixel）\n👉 「硬體普通，但我是 AI 親兒子。」",
-    "xiaomi": "Xiaomi（小米）\n👉 「規格給滿，價格給甜，名字一直改。」",
-    "oneplus": "OnePlus（一加）\n👉 「當年旗艦殺手，現在自己變旗艦。」",
-    "motorola": "Motorola（摩托羅拉）\n👉 「我還活著，而且我會折。」",
-    "vivo": "vivo\n👉 「拍人像很美，名字永遠打小寫。」",
-    "oppo": "OPPO\n👉 「充電快到你還沒找好插座就滿了。」",
-    "realme": "Realme\n👉 「我年輕、我便宜、我一直出新機。」",
-    "iqoo": "iQOO\n👉 「性能怪獸，但名字像電競隊伍。」",
-    "nothing": "Nothing\n👉 「我什麼都沒有，但你就是會多看兩眼。」",
-    "infinix": "Infinix\n👉 「規格寫得很猛，價格低到不像真的。」",
-    "tecno": "Tecno\n👉 「你可能沒聽過我，但我賣得比你想像多。」",
-    "honor": "Honor（榮耀）\n👉 「我不是華為，但大家一直這樣看我。」",
-    "nokia": "Nokia（諾基亞）\n👉 「手機會壞，但我不會倒。」",
-    "htc": "HTC\n👉 「我曾經站在世界之巔。」"
-}
-
-class ModernExifApp(TkinterDnD.Tk):
-    def __init__(self):
-        super().__init__()
-
-        self.title("Kuso EXIF 檢視器 (V1.0 20251230)")
-        self.geometry("1000x950")
-        self.configure(bg=CYBER_DARK)
-
-        self.current_image_path = None
-        self.exif_data_cache = {}
-        self.image_list = []
-        self.current_index = -1
-        self.popup_window = None
-
-        # --- 頂部 Header ---
-        self.header_label = ctk.CTkLabel(
-            self, 
-            text="[ Kuso EXIF 檢視器 (V1.0 20251230) ]", 
-            font=FONT_DATA,
-            text_color=CYBER_CYAN,
-            fg_color=CYBER_DARK,
-            height=30
-        )
-        self.header_label.pack(side="top", fill="x", pady=(10,0))
-
-        # --- 主容器 ---
-        self.main_container = ctk.CTkFrame(self, fg_color="transparent")
-        self.main_container.pack(fill="both", expand=True)
-
-        self.main_container.grid_columnconfigure(0, weight=1)
-        self.main_container.grid_columnconfigure(1, weight=1)
-        self.main_container.grid_rowconfigure(0, weight=3)
-        self.main_container.grid_rowconfigure(1, weight=0)
-        self.main_container.grid_rowconfigure(2, weight=2)
-        self.main_container.grid_rowconfigure(3, weight=0)
-
-        # 1. 圖片預覽區
-        self.frame_preview = ctk.CTkFrame(
-            self.main_container, 
-            corner_radius=8, 
-            fg_color=CYBER_BG_FRAME, 
-            border_color=CYBER_CYAN,
-            border_width=2
-        )
-        self.frame_preview.grid(row=0, column=0, columnspan=2, padx=20, pady=(20, 10), sticky="nsew")
-        
-        self.lbl_preview_hint = ctk.CTkLabel(
-            self.frame_preview, 
-            text=">> 拖曳影像資料至此載入 <<", 
-            font=FONT_TITLE, 
-            text_color=CYBER_CYAN
-        )
-        self.lbl_preview_hint.place(relx=0.5, rely=0.5, anchor="center")
-
-        self.lbl_image = ctk.CTkLabel(self.frame_preview, text="", cursor="hand2")
-        self.lbl_image.place(relx=0.5, rely=0.5, anchor="center")
-        
-        self.lbl_image.bind("<Button-1>", self.open_original_file)
-        self.lbl_image.bind("<Enter>", self.on_image_hover_enter)
-        self.lbl_image.bind("<Leave>", self.on_image_hover_leave)
-        self.lbl_image.bind("<Motion>", self.on_image_hover_motion)
-
-        self.lbl_hover_text = ctk.CTkLabel(
-            self, 
-            text="[ 警告：偵測到手指輸入 ]\n點啊，你給我點啊", 
-            font=FONT_HEADER,
-            fg_color=CYBER_YELLOW,
-            text_color=CYBER_DARK,
-            corner_radius=4,
-            width=200
-        )
-
-        # 1.5 進度條
-        self.progress_bar = ctk.CTkProgressBar(
-            self.main_container, 
-            orientation="horizontal", 
-            mode="indeterminate", 
-            height=8,
-            fg_color=CYBER_DARK,
-            progress_color=CYBER_CYAN,
-            border_color=CYBER_CYAN,
-            border_width=1
-        )
-        self.progress_bar.grid(row=1, column=0, columnspan=2, padx=25, pady=(0, 10), sticky="ew")
-        self.progress_bar.grid_remove()
-
-        # 2. 裝備清單
-        self.frame_basic = ctk.CTkFrame(
-            self.main_container, 
-            corner_radius=8, 
-            fg_color=CYBER_BG_FRAME, 
-            border_color=CYBER_YELLOW,
-            border_width=2
-        )
-        self.frame_basic.grid(row=2, column=0, padx=(20, 10), pady=(0, 20), sticky="nsew")
-
-        ctk.CTkLabel(self.frame_basic, text="[ 裝備清單 // GEAR_LIST ]", text_color=CYBER_YELLOW, font=FONT_HEADER).pack(pady=10)
-        
-        self.txt_basic = ctk.CTkTextbox(
-            self.frame_basic, 
-            font=FONT_DATA,
-            text_color=CYBER_TEXT_MAIN, 
-            fg_color="transparent"
-        )
-        self.txt_basic.pack(fill="both", expand=True, padx=15, pady=10)
-        self.create_context_menu(self.txt_basic)
-        self.txt_basic._textbox.tag_config("quote_style", font=FONT_QUOTE, foreground=CYBER_YELLOW)
-
-        # 3. 前世今生
-        self.frame_exposure = ctk.CTkFrame(
-            self.main_container, 
-            corner_radius=8, 
-            fg_color=CYBER_BG_FRAME, 
-            border_color=CYBER_PINK,
-            border_width=2
-        )
-        self.frame_exposure.grid(row=2, column=1, padx=(10, 20), pady=(0, 20), sticky="nsew")
-
-        ctk.CTkLabel(self.frame_exposure, text="[ 前世今生 // EXPOSURE_DATA ]", text_color=CYBER_PINK, font=FONT_HEADER).pack(pady=10)
-        
-        self.txt_exposure = ctk.CTkTextbox(
-            self.frame_exposure, 
-            font=FONT_DATA, 
-            text_color=CYBER_TEXT_MAIN, 
-            fg_color="transparent"
-        )
-        self.txt_exposure.pack(fill="both", expand=True, padx=15, pady=10)
-        self.create_context_menu(self.txt_exposure)
-
-        # 4. 按鈕區
-        self.frame_controls = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        self.frame_controls.grid(row=3, column=0, columnspan=2, padx=20, pady=(0, 20), sticky="ew")
-        self.frame_controls.grid_columnconfigure(0, weight=1)
-        self.frame_controls.grid_columnconfigure(1, weight=2)
-        self.frame_controls.grid_columnconfigure(2, weight=1)
-
-        btn_style = {"font": FONT_BUTTON, "height": 50, "corner_radius": 8, "text_color": CYBER_DARK}
-
-        self.btn_prev = ctk.CTkButton(
-            self.frame_controls, text="< 上一張", **btn_style,
-            fg_color=CYBER_CYAN, hover_color="#00cccc",
-            command=self.load_prev_image
-        )
-        self.btn_prev.grid(row=0, column=0, padx=5, sticky="ew")
-
-        self.btn_export = ctk.CTkButton(
-            self.frame_controls, text=">> 輸出照片身份證 <<", **btn_style,
-            fg_color=CYBER_GREEN, hover_color="#2ecc71",
-            command=self.export_to_txt
-        )
-        self.btn_export.grid(row=0, column=1, padx=5, sticky="ew")
-
-        self.btn_next = ctk.CTkButton(
-            self.frame_controls, text="下一張 >", **btn_style,
-            fg_color=CYBER_CYAN, hover_color="#00cccc",
-            command=self.load_next_image
-        )
-        self.btn_next.grid(row=0, column=2, padx=5, sticky="ew")
-        
-        # --- 聯絡資訊 ---
-        self.lbl_contact = ctk.CTkLabel(
-            self, 
-            text="程式設計：賀禎禎攝影教室\n連絡方式：hojenjen2018@gmail.com", 
-            font=("Microsoft JhengHei UI", 12), 
-            text_color="#888888"
-        )
-        self.lbl_contact.pack(side="bottom", pady=(0, 10))
-
-        # --- 底部狀態列 ---
-        self.status_label = ctk.CTkLabel(
-            self, text="SYSTEM STATUS: WAITING FOR INPUT...", 
-            font=("Consolas", 10), text_color=CYBER_CYAN, anchor="w"
-        )
-        self.status_label.pack(side="bottom", fill="x", padx=20, pady=(0, 5))
-
-        # --- 綁定 ---
-        self.drop_target_register(DND_FILES)
-        self.dnd_bind('<<Drop>>', self.on_drop)
-        self.bind("<Left>", lambda e: self.load_prev_image())
-        self.bind("<Up>", lambda e: self.load_prev_image())
-        self.bind("<Right>", lambda e: self.load_next_image())
-        self.bind("<Down>", lambda e: self.load_next_image())
-
-    # --- 隨機金句彈跳視窗 ---
-    def show_random_quote(self):
-        if self.popup_window is not None and self.popup_window.winfo_exists():
-            self.popup_window.destroy()
-
-        quote = random.choice(SOUL_QUOTES)
-
-        self.popup_window = ctk.CTkToplevel(self)
-        self.popup_window.title("CYBER_SYSTEM_ALERT")
-        self.popup_window.overrideredirect(True) 
-        self.popup_window.attributes("-topmost", True)
-        self.popup_window.configure(bg=CYBER_DARK)
-        
-        w, h = 600, 250
-        x = self.winfo_x() + (self.winfo_width() // 2) - (w // 2)
-        y = self.winfo_y() + (self.winfo_height() // 2) - (h // 2)
-        self.popup_window.geometry(f"{w}x{h}+{x}+{y}")
-        
-        frame = ctk.CTkFrame(
-            self.popup_window, 
-            fg_color=CYBER_BG_FRAME, 
-            border_width=3, 
-            border_color=CYBER_PINK,
-            corner_radius=0
-        )
-        frame.pack(expand=True, fill="both")
-
-        label_title = ctk.CTkLabel(
-            frame, 
-            text="// SYSTEM_OVERRIDE // 靈魂拷問程序啟動 //", 
-            font=FONT_DATA, 
-            text_color=CYBER_PINK
-        )
-        label_title.pack(pady=(20, 10))
-
-        label_quote = ctk.CTkLabel(
-            frame, 
-            text=quote, 
-            font=FONT_QUOTE, 
-            text_color=CYBER_TEXT_MAIN,
-            wraplength=550
-        )
-        label_quote.pack(expand=True)
-
-        # 這裡強制設定為 黃色(#FFFF00) 且 字體變大(18 bold)
-        label_hint = ctk.CTkLabel(
-            frame, 
-            text="[ 點擊任意處關閉 ]", 
-            font=("Microsoft JhengHei UI", 18, "bold"), 
-            text_color="#FFFF00"
-        )
-        label_hint.pack(pady=(10, 20))
-
-        def close_popup(event):
-            self.popup_window.destroy()
-        
-        for widget in [self.popup_window, frame, label_quote, label_title, label_hint]:
-            widget.bind("<Button-1>", close_popup)
-
-        self.popup_window.lift()
-        self.popup_window.focus_force()
-        self.popup_window.grab_set()
-        self.popup_window.update()
-
-    # --- 滑鼠懸停邏輯 ---
-    def on_image_hover_enter(self, event):
-        if self.current_image_path:
-            self.lbl_hover_text.lift()
-            self.lbl_hover_text.place(x=event.x_root - self.winfo_rootx() + 20, y=event.y_root - self.winfo_rooty() + 20)
-
-    def on_image_hover_leave(self, event):
-        self.lbl_hover_text.place_forget()
-
-    def on_image_hover_motion(self, event):
-        if self.current_image_path:
-            x = event.x_root - self.winfo_rootx() + 25
-            y = event.y_root - self.winfo_rooty() + 10
-            self.lbl_hover_text.place(x=x, y=y)
-
-    # --- 右鍵選單 ---
-    def create_context_menu(self, widget):
-        menu = Menu(self, tearoff=0, bg=CYBER_BG_FRAME, fg=CYBER_CYAN, activebackground=CYBER_CYAN, activeforeground=CYBER_DARK)
-        menu.add_command(label=">> 複製數值", command=lambda: self.copy_selection(widget))
-        menu.add_separator()
-        menu.add_command(label=">> 輸出選取內容至 TXT", command=lambda: self.export_selection(widget))
-        def show_menu(event):
-            try: menu.tk_popup(event.x_root, event.y_root)
-            finally: menu.grab_release()
-        widget.bind("<Button-3>", show_menu)
-        if platform.system() == 'Darwin': widget.bind("<Button-2>", show_menu)
-
-    def copy_selection(self, widget):
-        try:
-            self.clipboard_clear()
-            self.clipboard_append(widget.get("sel.first", "sel.last"))
-        except: pass
-
-    def export_selection(self, widget):
-        try:
-            txt = widget.get("sel.first", "sel.last")
-            if not txt: return
-            path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text", "*.txt")])
-            if path:
-                with open(path, "w", encoding="utf-8") as f: f.write(txt)
-                messagebox.showinfo("SYSTEM", "檔案已輸出，去找吧，我都存在 one peace了")
-        except: pass
-
-    # --- 圖片處理 (多執行緒版) ---
-    def on_drop(self, event):
-        file_path = event.data
-        if file_path.startswith('{') and file_path.endswith('}'):
-            file_path = file_path[1:-1]
-        if os.path.isfile(file_path):
-            self.process_new_file(file_path)
-
-    def process_new_file(self, path):
-        folder = os.path.dirname(path)
-        valid_exts = ['*.jpg', '*.jpeg', '*.png', '*.tiff', '*.webp', '*.JPG', '*.JPEG', '*.PNG']
-        self.image_list = []
-        for ext in valid_exts:
-            self.image_list.extend(glob.glob(os.path.join(folder, ext)))
-        self.image_list.sort()
-        try: self.current_index = self.image_list.index(path)
-        except ValueError: self.current_index = 0
-        
-        self.start_loading_sequence(path)
-
-    def start_loading_sequence(self, path):
-        self.status_label.configure(text=f"ANALYZING TARGET: {os.path.basename(path)}... [BACKGROUND_TASK_INIT]")
-        self.progress_bar.grid()
-        self.progress_bar.start()
-        
-        thread = threading.Thread(target=self.run_background_loading, args=(path,), daemon=True)
-        thread.start()
-
-    def run_background_loading(self, path):
-        try:
-            pil_img = Image.open(path)
-            pil_img.load() 
-            
-            orig_width, orig_height = pil_img.size
-            file_size_mb = os.path.getsize(path) / (1024 * 1024)
-            exif_raw = pil_img._getexif()
-
-            # 重點修正：在後台執行縮圖，主執行緒只負責顯示小圖
-            # 限制為 500x500 以內，這樣傳回 UI 時就不會卡頓
-            preview_img = pil_img.copy()
-            preview_img.thumbnail((500, 500)) 
-
-            parsed_data = self.parse_exif_data_only(exif_raw, orig_width, orig_height, file_size_mb, path)
-            
-            # 將縮好的 preview_img 傳給主線程
-            self.after(0, lambda: self.update_ui_after_loading(preview_img, parsed_data))
-
-        except Exception as e:
-            self.after(0, lambda: self.handle_loading_error(e))
-
-    def update_ui_after_loading(self, pil_img, parsed_data):
-        try:
-            self.current_image_path = parsed_data['path']
-            
-            # 這裡拿到的 pil_img 已經是縮小的縮圖了，所以 CTkImage 處理很快
-            display_img = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(500, 350))
-            self.lbl_image.configure(image=display_img, text="")
-            self.lbl_preview_hint.place_forget()
-
-            self.txt_basic.delete("0.0", "end")
-            self.txt_basic.insert("end", parsed_data['basic_text'])
-            if parsed_data['brand_quote']:
-                self.txt_basic.insert("end", parsed_data['brand_quote'] + "\n", "quote_style")
-
-            self.txt_exposure.delete("0.0", "end")
-            self.txt_exposure.insert("0.0", parsed_data['exposure_text'])
-
-            self.exif_data_cache = {
-                "basic": parsed_data['basic_text'] + parsed_data['brand_quote'],
-                "exposure": parsed_data['exposure_text'],
-                "filename": os.path.basename(self.current_image_path)
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuso EXIF 檢視器 (V1.0 20251230)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- EXIF.js -->
+    <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            dark: "#050a0e",
+                            bg: "#111827",
+                            cyan: "#00fff9",
+                            pink: "#fe0056",
+                            yellow: "#fcec0c",
+                            green: "#39ff14",
+                            text: "#e0f7fa"
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['"Share Tech Mono"', '"Noto Sans TC"', 'monospace'],
+                        sans: ['"Noto Sans TC"', 'sans-serif']
+                    }
+                }
             }
-
-            self.progress_bar.stop()
-            self.progress_bar.grid_remove()
-            self.status_label.configure(text="ANALYSIS COMPLETE. DATA READY.")
-            self.focus_set()
-            self.show_random_quote()
-
-        except Exception as e:
-            self.handle_loading_error(e)
-
-    def handle_loading_error(self, e):
-        self.progress_bar.stop()
-        self.progress_bar.grid_remove()
-        self.status_label.configure(text=f"ERROR: {e}")
-
-    def load_prev_image(self):
-        if not self.image_list: return
-        self.current_index = (self.current_index - 1) % len(self.image_list)
-        path = self.image_list[self.current_index]
-        self.start_loading_sequence(path)
-
-    def load_next_image(self):
-        if not self.image_list: return
-        self.current_index = (self.current_index + 1) % len(self.image_list)
-        path = self.image_list[self.current_index]
-        self.start_loading_sequence(path)
-
-    def parse_exif_data_only(self, exif_raw, width, height, size_mb, path):
-        data = {}
-        if exif_raw:
-            for tag_id, value in exif_raw.items():
-                data[ExifTags.TAGS.get(tag_id, tag_id)] = value
-
-        exp_mode_str = "你亂拍對吧?"
-        if 'ExposureProgram' in data:
-            try:
-                mode_val = int(data['ExposureProgram'])
-                if mode_val == 1: exp_mode_str = "M = Magic Mode（魔法模式） 👉 新手以為進去會自動變強"
-                elif mode_val == 2: exp_mode_str = "P = Pray Mode（祈禱模式） 👉 希望相機懂我"
-                elif mode_val == 3: exp_mode_str = "Av = Art Vision 模式（藝術視角） 👉 背景能糊就是好照片"
-                elif mode_val == 4: exp_mode_str = "S = Stop That Motion 模式 👉 不准動！"
-                elif mode_val == 0: exp_mode_str = "Auto = Blame the Camera Mode（出事怪相機）"
-                else: exp_mode_str = "Auto = Blame the Camera Mode（出事怪相機）"
-            except: pass
+        }
+    </script>
+    <style>
+        body {
+            background-color: #050a0e;
+            color: #e0f7fa;
+            font-family: 'Noto Sans TC', sans-serif;
+            overflow-x: hidden;
+        }
+        .neon-border-cyan { box-shadow: 0 0 5px #00fff9, inset 0 0 5px #00fff9; border: 1px solid #00fff9; }
+        .neon-border-pink { box-shadow: 0 0 5px #fe0056, inset 0 0 5px #fe0056; border: 1px solid #fe0056; }
+        .neon-border-yellow { box-shadow: 0 0 5px #fcec0c, inset 0 0 5px #fcec0c; border: 1px solid #fcec0c; }
+        .neon-text-cyan { text-shadow: 0 0 5px #00fff9; }
+        .neon-text-pink { text-shadow: 0 0 5px #fe0056; }
         
-        date_analysis = self.analyze_date_sentiment(data.get('DateTime', ''))
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00fff9; }
 
-        wb_map = {0: "自動", 1: "手動"}
-        wb_str = "色彩不重要"
-        if 'WhiteBalance' in data:
-            try: wb_str = wb_map.get(int(data.get('WhiteBalance')), "其他")
-            except: pass
+        .glitch-effect {
+            position: relative;
+        }
+        .glitch-effect::before, .glitch-effect::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #050a0e;
+        }
+        .glitch-effect::before {
+            left: 2px;
+            text-shadow: -1px 0 #fe0056;
+            clip: rect(24px, 550px, 90px, 0);
+            animation: glitch-anim-2 3s infinite linear alternate-reverse;
+        }
+        .glitch-effect::after {
+            left: -2px;
+            text-shadow: -1px 0 #00fff9;
+            clip: rect(85px, 550px, 140px, 0);
+            animation: glitch-anim 2.5s infinite linear alternate-reverse;
+        }
+        @keyframes glitch-anim {
+            0% { clip: rect(10px, 9999px, 30px, 0); }
+            20% { clip: rect(80px, 9999px, 100px, 0); }
+            40% { clip: rect(30px, 9999px, 60px, 0); }
+            60% { clip: rect(70px, 9999px, 110px, 0); }
+            80% { clip: rect(20px, 9999px, 50px, 0); }
+            100% { clip: rect(90px, 9999px, 130px, 0); }
+        }
+        @keyframes glitch-anim-2 {
+            0% { clip: rect(60px, 9999px, 90px, 0); }
+            20% { clip: rect(10px, 9999px, 50px, 0); }
+            40% { clip: rect(90px, 9999px, 120px, 0); }
+            60% { clip: rect(20px, 9999px, 60px, 0); }
+            80% { clip: rect(70px, 9999px, 100px, 0); }
+            100% { clip: rect(30px, 9999px, 70px, 0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
 
-        raw_shutter = data.get('ExposureTime', 0)
-        shutter_str = "別看這，沒資料"
-        try:
-            val = float(raw_shutter)
-            if val > 0:
-                if val < 1: shutter_str = f"1/{round(1/val)}"
-                else: shutter_str = f"{int(val) if val.is_integer() else val} 秒"
-        except: pass
+    <!-- Header -->
+    <header class="border-b border-cyber-bg p-4 bg-cyber-bg shadow-lg z-10">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <h1 class="text-2xl md:text-3xl font-bold text-cyber-cyan font-mono tracking-tighter neon-text-cyan glitch-effect" data-text="Kuso EXIF 檢視器 (V1.0 20251230)">
+                Kuso EXIF 檢視器 (V1.0 20251230)
+            </h1>
+            <div class="text-xs text-cyber-yellow font-mono hidden md:block">
+                SYS.STATUS: ONLINE // 20251230
+            </div>
+        </div>
+    </header>
 
-        raw_f = data.get('FNumber', 0)
-        f_str = "大概沒裝鏡頭吧?"
-        try: val = float(raw_f); f_str = f"f/{val}" if val > 0 else f_str
-        except: pass
+    <!-- Main Content -->
+    <main class="flex-grow p-4 md:p-6 max-w-7xl mx-auto w-full flex flex-col gap-6">
 
-        raw_fl = data.get('FocalLength', 0)
-        fl_str = "我累了"
-        try: val = float(raw_fl); fl_str = f"{val} mm" if val > 0 else fl_str
-        except: pass
+        <!-- Top Section: Image Preview & Upload -->
+        <div class="w-full relative group">
+            <input type="file" id="file-input" class="hidden" accept="image/jpeg,image/jpg,image/png,image/webp">
+            <div id="drop-zone" class="w-full h-[400px] bg-cyber-bg border-2 border-dashed border-cyber-cyan/30 rounded-lg flex flex-col justify-center items-center cursor-pointer transition-all hover:border-cyber-cyan hover:bg-cyber-bg/80 relative overflow-hidden group">
+                
+                <!-- Preview Image -->
+                <img id="preview-image" class="absolute w-full h-full object-contain opacity-0 transition-opacity duration-300 z-10" />
+                
+                <!-- Placeholder -->
+                <div id="placeholder" class="text-center z-0 transition-opacity duration-300">
+                    <i class="fa-solid fa-cloud-arrow-up text-5xl text-cyber-cyan mb-4 animate-bounce"></i>
+                    <h3 class="text-xl font-bold text-cyber-text mb-2">拖曳影像資料至此載入</h3>
+                    <p class="text-sm text-gray-500 font-mono">或點擊此處選擇檔案 (JPG/PNG)</p>
+                </div>
 
-        hyper_str = "這你不需要知道，反正你也不在乎"
-        try:
-            fl = float(data.get('FocalLength', 0))
-            fn = float(data.get('FNumber', 0))
-            if fl > 0 and fn > 0:
-                hyper_str = f"{((fl**2)/(fn*0.03)+fl)/1000:.2f} m"
-        except: pass
+                <!-- Overlay Hint -->
+                <div class="absolute bottom-4 right-4 bg-cyber-dark/80 px-3 py-1 rounded text-xs text-cyber-yellow font-mono border border-cyber-yellow opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                    [ SYSTEM: WAITING_FOR_INPUT ]
+                </div>
+            </div>
+        </div>
 
-        iso_val = data.get('ISOSpeedRatings', None)
-        iso_str = f"ISO {iso_val}" if iso_val else "我讀不到別問我"
+        <!-- Middle Section: Data Grids -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- Gear List (Yellow) -->
+            <div class="bg-cyber-bg border-l-4 border-cyber-yellow p-1 rounded-r-lg shadow-[0_0_15px_rgba(252,236,12,0.1)]">
+                <div class="bg-cyber-dark/50 h-full p-4 rounded relative overflow-hidden">
+                    <h2 class="text-cyber-yellow font-bold text-xl mb-4 flex items-center font-mono border-b border-cyber-yellow/30 pb-2">
+                        <i class="fa-solid fa-camera mr-2"></i> [ 裝備清單 // GEAR_LIST ]
+                    </h2>
+                    <div id="gear-list-content" class="font-mono text-sm leading-relaxed space-y-2 min-h-[150px]">
+                        <p class="text-gray-500 italic">>> 等待數據注入...</p>
+                    </div>
+                </div>
+            </div>
 
-        gps_tag = next((k for k, v in ExifTags.TAGS.items() if v == 'GPSInfo'), None)
-        gps_str = "包含座標數據" if (exif_raw and gps_tag in exif_raw) else "我沒有 GPS ，你別看了"
+            <!-- Exposure Data (Pink) -->
+            <div class="bg-cyber-bg border-l-4 border-cyber-pink p-1 rounded-r-lg shadow-[0_0_15px_rgba(254,0,86,0.1)]">
+                <div class="bg-cyber-dark/50 h-full p-4 rounded relative overflow-hidden">
+                    <h2 class="text-cyber-pink font-bold text-xl mb-4 flex items-center font-mono border-b border-cyber-pink/30 pb-2">
+                        <i class="fa-solid fa-bolt mr-2"></i> [ 前世今生 // EXPOSURE ]
+                    </h2>
+                    <div id="exposure-content" class="font-mono text-sm leading-relaxed space-y-2 min-h-[150px]">
+                        <p class="text-gray-500 italic">>> 等待數據注入...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        raw_make = str(data.get('Make', '')).strip()
-        raw_model = str(data.get('Model', '')).strip()
-        cam_name = f"{raw_make} {raw_model}".strip() if raw_make or raw_model else "我沒有名字"
-        lens_name = f"{data.get('LensMake', '')} {data.get('LensModel', '')}".strip()
-        if not lens_name: lens_name = "我沒有眼鏡"
+        <!-- Control Bar -->
+        <div class="flex justify-center mt-2">
+            <button id="export-btn" class="bg-cyber-green/10 hover:bg-cyber-green/20 text-cyber-green border border-cyber-green font-bold py-3 px-8 rounded flex items-center gap-2 transition-all hover:shadow-[0_0_15px_rgba(57,255,20,0.3)] disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fa-solid fa-file-export"></i> 輸出照片身份證 (.txt)
+            </button>
+        </div>
 
-        brand_quote = self.get_brand_quote(raw_make, raw_model)
+    </main>
 
-        basic_text = (
-            f"DEVICE_NAME : {cam_name}\n"
-            f"LENS_MODEL  : {lens_name}\n"
-            f"CAPTURE_DATE: {date_analysis}\n"
-            f"\nRESOLUTION  : {width} x {height} ({round((width*height)/1000000, 1)} MP)\n"
-            f"FILE_SIZE   : {size_mb:.2f} MB\n"
-            f"GPS_STATUS  : {gps_str}\n"
-            f"\n{'='*30}\n"
-        )
+    <!-- Footer -->
+    <footer class="bg-cyber-bg border-t border-cyber-dark p-6 mt-auto">
+        <div class="max-w-7xl mx-auto flex flex-col items-center justify-center text-center gap-2">
+            <p class="text-gray-400 text-sm">
+                程式設計：<span class="text-cyber-cyan">賀禎禎攝影教室</span>
+            </p>
+            <p class="text-gray-500 text-xs font-mono">
+                連絡方式：<a href="mailto:hojenjen2018@gmail.com" class="hover:text-cyber-pink transition-colors">hojenjen2018@gmail.com</a>
+            </p>
+            <p class="text-[10px] text-gray-700 mt-2 font-mono">
+                © 2025 KUSO EXIF VIEWER. ALL RIGHTS RESERVED.
+            </p>
+        </div>
+    </footer>
 
-        exposure_text = (
-            f"EXP_MODE    : {exp_mode_str}\n"
-            f"ISO_SPEED   : {iso_str}\n"
-            f"SHUTTER     : {shutter_str}\n"
-            f"APERTURE    : {f_str}\n"
-            f"FOCAL_LEN   : {fl_str}\n"
-            f"WHITE_BAL   : {wb_str}\n"
-            f"HYPERFOCAL  : {hyper_str}\n"
-        )
+    <!-- Quote Modal -->
+    <div id="quote-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-cyber-bg border-2 border-cyber-pink max-w-lg w-[90%] p-1 relative transform scale-95 transition-transform duration-300" id="quote-box">
+            <div class="bg-cyber-dark p-6 text-center relative overflow-hidden">
+                <!-- Decorative Lines -->
+                <div class="absolute top-0 left-0 w-full h-1 bg-cyber-pink"></div>
+                <div class="absolute bottom-0 left-0 w-full h-1 bg-cyber-pink"></div>
+                
+                <h3 class="text-cyber-pink font-mono text-sm mb-4 tracking-widest">
+                    // SYSTEM_OVERRIDE // 靈魂拷問程序 //
+                </h3>
+                
+                <p id="quote-text" class="text-xl md:text-2xl font-bold text-white leading-relaxed mb-8 neon-text-pink">
+                    載入中...
+                </p>
 
-        return {
-            "basic_text": basic_text,
-            "exposure_text": exposure_text,
-            "brand_quote": brand_quote,
-            "path": path
+                <button id="close-modal" class="bg-cyber-yellow text-cyber-dark font-bold py-2 px-6 rounded hover:bg-white transition-colors text-lg">
+                    [ 點擊關閉 ]
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data Sources from Python Version
+        const SOUL_QUOTES = [
+            "你不是升級器材，是延後面對實力", "防潮箱是攝影師的夢想冰櫃", "器材全新，作品全無",
+            "鏡頭越貴，越不敢帶出門", "鏡頭比你的人生規劃清楚", "開箱拍得比作品認真",
+            "器材買齊了，拍照還在找題材", "你不是器材黨，是逃避黨", "相機知道你很窮，但你裝作不在乎",
+            "技術沒進步，但配件越來越齊", "全手動只是讓錯誤更有尊嚴", "用 M 模式拍爛，不會比較高級",
+            "光圈全開不是風格，是失控", "快門亂轉，模糊當哲學", "ISO 爆表，叫情緒",
+            "不會測光，卻愛談光", "參數背得熟，畫面還是死", "你在控制相機，相機在懲罰你",
+            "曝光補償是你最後的希望", "白平衡亂跑，色彩還敢說「自然」", "模糊不是詩，是沒對焦",
+            "黑白不是深度，是遮羞", "極簡不是什麼都沒拍到", "留白留到像沒走近",
+            "對稱不是構圖，是怕出錯", "中央構圖用一輩子，還說是風格", "前景亂放叫設計",
+            "廣角貼臉叫震撼", "背景亂不是紀實，是不負責", "看不懂不是高級，是沒說清楚",
+            "模特漂亮，不是你的功勞", "散景不是情感，是背景糊掉", "眼神空，不是憂鬱，是沒引導",
+            "模特在撐，你在自爽", "姿勢一樣，只是換人", "修皮修到像塑膠，還說真實",
+            "人像不是拍臉部證件", "模特救了你，你還以為是自己", "偷拍不是街拍，是沒勇氣",
+            "被拒拍就說自己在做藝術", "後製不是創作，是急救", "濾鏡比內容重",
+            "顏色很猛，情緒為零", "修到不像人，還說自然", "Lightroom 不是贖罪券",
+            "修圖修到忘記原本想拍什麼", "對比拉滿，故事消失", "一鍵風格不是風格",
+            "HDR 不是讓人眼睛流血", "後製時間比思考時間長", "沒風格不叫多元",
+            "模仿太像，就是抄", "每張都不同，其實都不行", "黑暗不是深沉，是空",
+            "風格不是你說了算，是作品說了算", "拍很多，不代表拍得好", "快門累積，不等於成長",
+            "你說在找風格，其實在拖", "作品集像跳蚤市場", "你該刪的比該留的多",
+            "讚多不是證明，只是運氣", "讚少也不代表你是藝術家", "演算法不是你的敵人，是照妖鏡",
+            "被分享不代表被理解", "流量來得快，你也空得快", "標籤下得準，照片還是爛",
+            "文案比照片精彩", "為了流量拍，最後只剩流量", "熱門構圖不是你的風格",
+            "每張都想爆，其實沒一張站得住", "拍很久，不代表你進步", "老手亂拍，新手看不出來",
+            "新手拍得好，就是好", "聽不進批評的人最危險", "一直辯解，代表你知道不行",
+            "怪器材的人不想面對自己", "自稱藝術家的人通常最怕被看懂", "攝影不是頭銜",
+            "拍照不是逃避思考", "相機不會幫你做選擇", "好照片不用解釋",
+            "解釋越多，照片越弱", "看不出你想拍什麼", "「有感覺但說不出來」＝沒完成",
+            "技術到位，內容缺席", "拍得清楚，不等於拍得好", "你很努力，但照片沒收到",
+            "相機很高級，照片很普通", "這張不是爛，是浪費", "沒失敗，不代表成功",
+            "好照片不需要很多", "十張一張就很強", "刪照片也是創作",
+            "拍照是選擇，不是全收", "不拍，有時比亂拍好", "相機會過時，眼睛不會",
+            "看得少，拍再多都沒用", "你最後只會拍給自己看", "攝影不是證明你有多厲害",
+            "拍照，最後是在對付自己"
+        ];
+
+        const BRAND_COMMENTS = {
+            "canon": "Canon（佳能）<br>👉 「佳能：大家第一台相機，老師、記者、婚攝都用它。」",
+            "nikon": "Nikon（尼康）<br>👉 「尼康：我不跟流行，我只跟光線講道理。」",
+            "fujifilm": "Fujifilm（富士）<br>👉 「富士：哇，你是富家子弟，連顏色都很有教養。」",
+            "panasonic": "Panasonic（松下）<br>👉 「松下：我拍照還行，但我其實是來拍電影的。」",
+            "olympus": "OM System / Olympus<br>👉 「奧林巴斯：我很小，但我陪你上山下海。」",
+            "om digital": "OM System / Olympus<br>👉 「奧林巴斯：我很小，但我陪你上山下海。」",
+            "leica": "Leica（徠卡）<br>👉 「徠卡：你買的不是相機，是信仰與紅點。」",
+            "pentax": "Pentax（賓得）<br>👉 「賓得：大家都忘了我，但我自己很驕傲。」",
+            "hasselblad": "Hasselblad（哈蘇）<br>👉 「哈蘇：我一張照片，等於你一台電腦。」",
+            "blackmagic": "Blackmagic Design<br>👉 「Blackmagic：拍照？不，我只活在剪接軟體裡。」",
+            "sony": "Sony（索尼）<br>👉 「Sony：對焦比你人生目標還快。」",
+            "apple": "Apple（蘋果）<br>👉 「你買的不是手機，是生態系入場券。」",
+            "iphone": "Apple（蘋果）<br>👉 「你買的不是手機，是生態系入場券。」",
+            "samsung": "Samsung（三星）<br>👉 「型號多到連自己都需要分類表。」",
+            "google": "Google（Pixel）<br>👉 「硬體普通，但我是 AI 親兒子。」",
+            "pixel": "Google（Pixel）<br>👉 「硬體普通，但我是 AI 親兒子。」"
+            // (為了保持簡潔，其他品牌邏輯通用，若無特定則顯示無)
+        };
+
+        // DOM Elements
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const previewImage = document.getElementById('preview-image');
+        const placeholder = document.getElementById('placeholder');
+        const gearListContent = document.getElementById('gear-list-content');
+        const exposureContent = document.getElementById('exposure-content');
+        const quoteModal = document.getElementById('quote-modal');
+        const quoteBox = document.getElementById('quote-box');
+        const quoteText = document.getElementById('quote-text');
+        const closeModal = document.getElementById('close-modal');
+        const exportBtn = document.getElementById('export-btn');
+
+        let currentExifData = null;
+
+        // Event Listeners
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-cyber-cyan', 'bg-cyber-bg/80');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-cyber-cyan', 'bg-cyber-bg/80');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-cyber-cyan', 'bg-cyber-bg/80');
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+        });
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleFile(file);
+        });
+
+        // Modal Logic
+        function showQuote() {
+            const randomQuote = SOUL_QUOTES[Math.floor(Math.random() * SOUL_QUOTES.length)];
+            quoteText.textContent = randomQuote;
+            
+            quoteModal.classList.remove('hidden');
+            // Small delay for transition
+            setTimeout(() => {
+                quoteModal.classList.remove('opacity-0');
+                quoteBox.classList.remove('scale-95');
+                quoteBox.classList.add('scale-100');
+            }, 10);
         }
 
-    def get_brand_quote(self, make, model):
-        make_s = str(make).lower().strip()
-        model_s = str(model).lower().strip()
-        if "sony" in make_s:
-            return "Sony（索尼）\n👉 「相機部門很強，但手機只想做給懂的人。」" if "xperia" in model_s else "Sony（索尼）\n👉 「Sony：對焦比你人生目標還快。」"
-        for k, v in BRAND_COMMENTS.items():
-            if k in make_s: return v
-        return ""
+        closeModal.addEventListener('click', () => {
+            quoteModal.classList.add('opacity-0');
+            quoteBox.classList.remove('scale-100');
+            quoteBox.classList.add('scale-95');
+            setTimeout(() => {
+                quoteModal.classList.add('hidden');
+            }, 300);
+        });
 
-    def analyze_date_sentiment(self, date_str):
-        if not date_str or str(date_str).strip() == "": return "我沒有生日"
-        try:
-            dt_obj = datetime.strptime(str(date_str), '%Y:%m:%d %H:%M:%S')
-            year = dt_obj.year
-            main_date = f"{dt_obj.year}-{dt_obj.month:02d}-{dt_obj.day:02d}"
+        // Main File Handling
+        function handleFile(file) {
+            if (!file.type.match('image.*')) {
+                alert("只能讀取影像檔喔！(JPG/PNG/WebP)");
+                return;
+            }
+
+            // Read for Preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewImage.classList.remove('opacity-0');
+                placeholder.classList.add('opacity-0');
+                
+                // Read EXIF
+                // We need to use the image object for EXIF.js
+                // But EXIF.js works better if we let it load the image itself or pass the element
+                // Here we use the previewImage element which now has the src
+                setTimeout(() => {
+                    EXIF.getData(previewImage, function() {
+                        const allMetaData = EXIF.getAllTags(this);
+                        processExifData(allMetaData, file);
+                        showQuote();
+                    });
+                }, 100);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function processExifData(data, file) {
+            // Safe Getters
+            const make = data.Make || "Unknown Make";
+            const model = data.Model || "Unknown Model";
+            const lens = data.LensModel || "我沒有眼鏡";
+            const date = data.DateTimeOriginal || data.DateTime || "";
+            const width = data.PixelXDimension || "?";
+            const height = data.PixelYDimension || "?";
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+
+            // Logic Port: Exposure Program
+            let expModeStr = "你亂拍對吧?";
+            const prog = data.ExposureProgram; // 1:M, 2:P, 3:Av, 4:Sv
+            if (prog === 1) expModeStr = "M = Magic Mode（魔法模式） 👉 新手以為進去會自動變強";
+            else if (prog === 2) expModeStr = "P = Pray Mode（祈禱模式） 👉 希望相機懂我";
+            else if (prog === 3) expModeStr = "Av = Art Vision 模式（藝術視角） 👉 背景能糊就是好照片";
+            else if (prog === 4) expModeStr = "S = Stop That Motion 模式 👉 不准動！";
+            else if (prog === 0) expModeStr = "Auto = Blame the Camera Mode（出事怪相機）";
+
+            // Logic Port: Shutter
+            let shutterStr = "別看這，沒資料";
+            if (data.ExposureTime) {
+                const val = parseFloat(data.ExposureTime);
+                if (val < 1) shutterStr = `1/${Math.round(1/val)}`;
+                else shutterStr = `${val} 秒`;
+            }
+
+            // Logic Port: Aperture
+            let fStr = "大概沒裝鏡頭吧?";
+            if (data.FNumber) fStr = `f/${data.FNumber}`;
+
+            // Logic Port: ISO
+            const isoStr = data.ISOSpeedRatings ? `ISO ${data.ISOSpeedRatings}` : "我讀不到別問我";
+
+            // Logic Port: Focal Length
+            const flStr = data.FocalLength ? `${data.FocalLength} mm` : "我累了";
+
+            // Logic Port: Brand Quote
+            let brandQuote = "";
+            const makeLower = make.toLowerCase();
+            const modelLower = model.toLowerCase();
             
-            if year >= 2024: comment = "「還在保固內」\n👉 記憶新鮮、硬碟還沒壞\n👉 「這不是舊照，是回顧」"
-            elif year >= 2023: comment = "「時間過好快模式」\n👉 拍的時候明明是昨天\n👉 「怎麼已經兩年了？」"
-            elif year >= 2022: comment = "「疫情後遺照（情感版）」\n👉 人還在，感覺不一樣了\n👉 「那時候的我，好瘦 / 好天真」"
-            elif year >= 2021: comment = "「時代交界線」\n👉 拍照設備已被嫌舊\n👉 「這是前一支手機拍的」"
-            elif year >= 2020: comment = "「哇靠，已經五年了」\n👉 正式進入懷舊區\n👉 「這張現在看有點感情」"
-            elif year >= 2015: comment = "「經典老照片」\n👉 濾鏡開始有年代感\n👉 「這是我以前的風格」（= 不想承認）"
-            elif year >= 2000: comment = "「歷史文件等級」\n👉 人物外型差很多\n👉 「那時候大家都這樣穿」"
-            else: comment = "「考古現場」\n👉 畫質感人、表情真誠\n👉 「這張要小心拿」"
+            // Sony Special Case
+            if (makeLower.includes("sony")) {
+                if (modelLower.includes("xperia")) brandQuote = "Sony（索尼）<br>👉 「相機部門很強，但手機只想做給懂的人。」";
+                else brandQuote = BRAND_COMMENTS["sony"];
+            } else {
+                for (const key in BRAND_COMMENTS) {
+                    if (makeLower.includes(key)) {
+                        brandQuote = BRAND_COMMENTS[key];
+                        break;
+                    }
+                }
+            }
+
+            // Logic Port: Date Analysis
+            let timeMachine = "我沒有生日";
+            if (date) {
+                // EXIF date format is usually "YYYY:MM:DD HH:MM:SS"
+                const parts = date.split(' ')[0].split(':');
+                if (parts.length === 3) {
+                    const year = parseInt(parts[0]);
+                    let comment = "";
+                    if (year >= 2024) comment = "「還在保固內」<br>👉 記憶新鮮、硬碟還沒壞<br>👉 「這不是舊照，是回顧」";
+                    else if (year >= 2023) comment = "「時間過好快模式」<br>👉 拍的時候明明是昨天<br>👉 「怎麼已經兩年了？」";
+                    else if (year >= 2022) comment = "「疫情後遺照（情感版）」<br>👉 人還在，感覺不一樣了<br>👉 「那時候的我，好瘦 / 好天真」";
+                    else if (year >= 2021) comment = "「時代交界線」<br>👉 拍照設備已被嫌舊<br>👉 「這是前一支手機拍的」";
+                    else if (year >= 2020) comment = "「哇靠，已經五年了」<br>👉 正式進入懷舊區<br>👉 「這張現在看有點感情」";
+                    else if (year >= 2015) comment = "「經典老照片」<br>👉 濾鏡開始有年代感<br>👉 「這是我以前的風格」（= 不想承認）";
+                    else if (year >= 2000) comment = "「歷史文件等級」<br>👉 人物外型差很多<br>👉 「那時候大家都這樣穿」";
+                    else comment = "「考古現場」<br>👉 畫質感人、表情真誠<br>👉 「這張要小心拿」";
+                    
+                    timeMachine = `${parts.join('-')} <br><br><span class="text-cyber-pink">[ 時光機分析 ]</span><br>${comment}`;
+                }
+            }
+
+            // Build HTML Strings
+            const gearHtml = `
+                <div class="mb-2"><span class="text-gray-400">DEVICE:</span> <span class="text-white font-bold">${make} ${model}</span></div>
+                <div class="mb-2"><span class="text-gray-400">LENS:</span> <span class="text-white">${lens}</span></div>
+                <div class="mb-2"><span class="text-gray-400">DATE:</span> <span class="text-cyber-green">${date}</span></div>
+                <div class="mb-2"><span class="text-gray-400">SIZE:</span> ${width}x${height} (${sizeMB} MB)</div>
+                ${brandQuote ? `<div class="mt-4 p-2 bg-cyber-yellow/10 border border-cyber-yellow text-cyber-yellow text-xs">${brandQuote}</div>` : ''}
+            `;
+
+            const exposureHtml = `
+                <div class="mb-2"><span class="text-gray-400">MODE:</span> <span class="text-cyber-pink">${expModeStr}</span></div>
+                <div class="mb-2"><span class="text-gray-400">SHUTTER:</span> <span class="text-white">${shutterStr}</span></div>
+                <div class="mb-2"><span class="text-gray-400">APERTURE:</span> <span class="text-white">${fStr}</span></div>
+                <div class="mb-2"><span class="text-gray-400">ISO:</span> <span class="text-white">${isoStr}</span></div>
+                <div class="mb-2"><span class="text-gray-400">FOCAL:</span> <span class="text-white">${flStr}</span></div>
+                <div class="mt-4 pt-4 border-t border-cyber-bg text-sm text-gray-300 leading-relaxed">${timeMachine}</div>
+            `;
+
+            // Update DOM
+            gearListContent.innerHTML = gearHtml;
+            exposureContent.innerHTML = exposureHtml;
+
+            // Save Data for Export
+            currentExifData = {
+                filename: file.name,
+                basic: gearHtml.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim(),
+                exposure: exposureHtml.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
+            };
+            exportBtn.disabled = false;
+        }
+
+        // Export Function
+        exportBtn.addEventListener('click', () => {
+            if (!currentExifData) return;
             
-            return f"{main_date}\n\n[ 時光機分析 // TIME_MACHINE_LOG ]\n{comment}"
-        except: return f"{date_str} (DATA CORRUPTED)"
+            const textContent = `// CYBERDECK EXIF ANALYSIS LOG //\n` +
+                `TARGET_FILE: ${currentExifData.filename}\n\n` +
+                `[ GEAR_LIST ]\n${currentExifData.basic}\n\n` +
+                `[ EXPOSURE_DATA ]\n${currentExifData.exposure}\n\n` +
+                `GENERATED BY KUSO EXIF VIEWER (WEB)`;
+            
+            const blob = new Blob([textContent], { type: "text/plain;charset=utf-8" });
+            const filename = `EXIF_LOG_${new Date().toISOString().slice(0,10)}.txt`;
+            
+            // Simple download link creation
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+        });
 
-    def open_original_file(self, event):
-        if self.current_image_path:
-            try:
-                if platform.system() == 'Darwin': os.system(f'open "{self.current_image_path}"')
-                elif platform.system() == 'Windows': os.startfile(self.current_image_path)
-                else: os.system(f'xdg-open "{self.current_image_path}"')
-            except Exception as e: 
-                self.status_label.configure(text=f"ERROR OPENING FILE: {e}")
-
-    def export_to_txt(self):
-        if not self.exif_data_cache: return
-        file_name = self.exif_data_cache.get('filename', 'exif_info')
-        save_path = filedialog.asksaveasfilename(
-            initialfile=f"{file_name}_DATA_LOG.txt", defaultextension=".txt",
-            filetypes=[("Text Documents", "*.txt")]
-        )
-        if save_path:
-            with open(save_path, "w", encoding="utf-8") as f:
-                f.write(f"// CYBERDECK EXIF ANALYSIS LOG //\n")
-                f.write(f"TARGET_FILE: {self.exif_data_cache['filename']}\n\n")
-                f.write(f"[ GEAR_LIST ]\n{self.exif_data_cache['basic']}\n")
-                f.write(f"[ EXPOSURE_DATA ]\n{self.exif_data_cache['exposure']}\n")
-            messagebox.showinfo("SYSTEM", "檔案已輸出，去找吧，我都存在 one peace了")
-
-if __name__ == "__main__":
-    app = ModernExifApp()
-    app.mainloop()
+    </script>
+</body>
+</html>
