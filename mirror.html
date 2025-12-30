@@ -3,194 +3,290 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>圖片拖曳鏡射工具 (Web版)</title>
+    <title>照片左右鏡射程式 (V1.0 20251230)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f0f2f5; }
-        .drag-active { border-color: #3b82f6 !important; background-color: #eff6ff !important; }
-        canvas { max-width: 100%; height: auto; object-fit: contain; }
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f0f2f5; color: #1f2937; }
+        
+        /* 隱藏 Canvas，我們只顯示預覽用的 img 標籤以適應螢幕大小，但實際運算用 Canvas */
+        .hidden-canvas { display: none; }
+        
+        .drag-active {
+            border-color: #3b82f6 !important;
+            background-color: #eff6ff !important;
+        }
     </style>
 </head>
-<body>
+<body class="min-h-screen flex flex-col">
 
-    <div class="min-h-screen flex flex-col items-center justify-center p-4">
-        
-        <!-- Header -->
-        <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-slate-800 mb-2">
-                <i class="fa-solid fa-right-left text-green-600 mr-2"></i>圖片鏡射翻轉工具
+    <!-- Header -->
+    <header class="bg-slate-800 text-white shadow-lg py-4 px-6">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <h1 class="text-xl md:text-2xl font-bold flex items-center">
+                <i class="fa-solid fa-right-left mr-3 text-blue-400"></i>
+                照片左右鏡射程式 <span class="ml-2 text-xs bg-slate-600 px-2 py-1 rounded text-slate-300 align-middle">V1.0 20251230</span>
             </h1>
-            <p class="text-slate-500">拖曳圖片，一鍵左右翻轉並高畫質下載</p>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl mx-auto w-full p-4 md:p-6 flex flex-col gap-6">
+
+        <!-- Control Bar -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center gap-4 justify-center md:justify-start">
+            <span class="font-bold text-slate-700 hidden md:inline">操作步驟：</span>
+            
+            <!-- Step 1 -->
+            <button onclick="document.getElementById('file-upload').click()" class="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg transition-colors font-medium border border-slate-300">
+                <span class="bg-slate-700 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">1</span>
+                選擇/拖入照片
+            </button>
+            <input type="file" id="file-upload" class="hidden" accept="image/*">
+
+            <i class="fa-solid fa-arrow-right text-slate-300"></i>
+
+            <!-- Step 2 -->
+            <button id="mirror-btn" disabled class="flex items-center gap-2 bg-slate-100 text-slate-400 cursor-not-allowed px-4 py-2 rounded-lg transition-colors font-medium border border-slate-300" onclick="processMirror()">
+                <span class="bg-slate-400 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center step-badge">2</span>
+                點我鏡射
+            </button>
+
+            <i class="fa-solid fa-arrow-right text-slate-300"></i>
+
+            <!-- Step 3 -->
+            <button id="save-btn" disabled class="flex items-center gap-2 bg-green-600/50 text-white/80 cursor-not-allowed px-4 py-2 rounded-lg transition-all font-medium shadow-sm">
+                <span class="bg-white/20 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
+                另存新檔 (高畫質)
+            </button>
         </div>
 
-        <!-- Main Workspace -->
-        <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-200 w-full max-w-6xl">
+        <!-- Image Display Area -->
+        <div class="flex-grow grid grid-cols-1 md:grid-cols-2 gap-6 min-h-[400px]">
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                
-                <!-- Left: Input / Original -->
-                <div class="flex flex-col h-full">
-                    <div class="flex justify-between items-center mb-3">
-                        <h2 class="font-bold text-slate-700">1. 原始圖片</h2>
-                        <button onclick="document.getElementById('file-input').click()" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
-                            重新上傳
-                        </button>
-                    </div>
-                    
-                    <div id="drop-zone" class="flex-grow border-2 border-dashed border-slate-300 rounded-xl min-h-[400px] flex flex-col items-center justify-center bg-slate-50 cursor-pointer transition-colors relative overflow-hidden group">
-                        <input type="file" id="file-input" accept="image/*" class="hidden">
-                        
-                        <!-- Empty State -->
-                        <div id="empty-state" class="text-center p-6">
-                            <div class="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400 text-2xl group-hover:bg-blue-100 group-hover:text-blue-500 transition-colors">
-                                <i class="fa-solid fa-cloud-arrow-up"></i>
-                            </div>
-                            <p class="text-slate-600 font-medium">點擊或拖曳圖片至此</p>
-                            <p class="text-xs text-slate-400 mt-1">支援 JPG, PNG, WebP</p>
-                        </div>
-
-                        <!-- Preview Image (Original) -->
-                        <img id="original-preview" class="hidden max-h-[400px] max-w-full object-contain shadow-sm">
-                    </div>
+            <!-- Left: Original -->
+            <div class="flex flex-col h-full">
+                <div class="flex justify-between items-center mb-2 px-1">
+                    <span class="font-bold text-slate-600"><i class="fa-regular fa-image mr-2"></i>原始照片</span>
+                    <span id="original-info" class="text-xs text-slate-400"></span>
                 </div>
-
-                <!-- Right: Output / Mirrored -->
-                <div class="flex flex-col h-full">
-                    <div class="flex justify-between items-center mb-3">
-                        <h2 class="font-bold text-slate-700">2. 鏡射結果</h2>
-                        <div id="action-buttons" class="flex gap-2 opacity-50 pointer-events-none transition-opacity">
-                            <button id="mirror-btn" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors">
-                                <i class="fa-solid fa-retweet mr-1"></i> 執行翻轉
-                            </button>
-                        </div>
+                
+                <div id="drop-zone" class="flex-grow bg-white border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center p-4 transition-all cursor-pointer relative overflow-hidden group min-h-[300px]">
+                    
+                    <!-- Placeholder -->
+                    <div id="placeholder" class="text-center pointer-events-none">
+                        <i class="fa-solid fa-cloud-arrow-up text-4xl text-slate-300 mb-3"></i>
+                        <p class="text-slate-500 font-medium">把照片拖到這裡</p>
+                        <p class="text-slate-400 text-xs mt-1">或點擊上方「選擇照片」</p>
                     </div>
 
-                    <div id="result-zone" class="flex-grow border border-slate-200 rounded-xl min-h-[400px] flex items-center justify-center bg-slate-50/50 relative overflow-hidden">
-                        <p id="result-placeholder" class="text-slate-400 text-sm">等待處理...</p>
-                        <!-- Canvas for rendering output -->
-                        <canvas id="canvas-output" class="hidden shadow-sm"></canvas>
-                    </div>
+                    <!-- Preview Image (Original) -->
+                    <img id="preview-original" class="hidden max-w-full max-h-full object-contain shadow-lg rounded" alt="原始預覽">
+                </div>
+            </div>
 
-                    <!-- Download Section -->
-                    <button id="download-btn" disabled class="w-full mt-4 bg-slate-200 text-slate-400 font-bold py-3 px-4 rounded-lg flex items-center justify-center transition-all disabled:cursor-not-allowed hover:bg-blue-600 hover:text-white hover:shadow-lg">
-                        <i class="fa-solid fa-download mr-2"></i> 下載鏡射圖片
-                    </button>
+            <!-- Right: Result -->
+            <div class="flex flex-col h-full">
+                <div class="flex justify-between items-center mb-2 px-1">
+                    <span class="font-bold text-blue-600"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>鏡射結果</span>
+                    <span id="result-info" class="text-xs text-slate-400"></span>
+                </div>
+                
+                <div class="flex-grow bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center p-4 relative overflow-hidden min-h-[300px]">
+                    <div id="result-placeholder" class="text-slate-400 text-sm">
+                        等待執行鏡射...
+                    </div>
+                    <!-- Preview Image (Result) -->
+                    <img id="preview-result" class="hidden max-w-full max-h-full object-contain shadow-lg rounded border border-white" alt="鏡射預覽">
                 </div>
             </div>
 
         </div>
-        
-        <div class="mt-8 text-center">
-            <a href="index.html" class="text-slate-500 hover:text-slate-800 text-sm font-medium inline-flex items-center transition-colors">
-                <i class="fa-solid fa-arrow-left mr-2"></i> 回到工具箱首頁
-            </a>
-        </div>
 
-    </div>
+        <!-- Hidden Canvases for Processing -->
+        <canvas id="canvas-original" class="hidden-canvas"></canvas>
+        <canvas id="canvas-result" class="hidden-canvas"></canvas>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-6 mt-auto">
+        <div class="max-w-7xl mx-auto text-center space-y-2">
+            <p class="text-slate-600 font-medium">程式設計：賀禎禎攝影教室</p>
+            <p class="text-slate-500 text-sm">
+                連絡方式：<a href="mailto:hojenjen2018@gmail.com" class="text-blue-500 hover:underline">hojenjen2018@gmail.com</a>
+            </p>
+        </div>
+    </footer>
 
     <script>
+        // DOM Elements
         const dropZone = document.getElementById('drop-zone');
-        const fileInput = document.getElementById('file-input');
-        const emptyState = document.getElementById('empty-state');
-        const originalPreview = document.getElementById('original-preview');
-        const mirrorBtn = document.getElementById('mirror-btn');
-        const actionButtons = document.getElementById('action-buttons');
-        const resultZone = document.getElementById('result-zone');
+        const fileUpload = document.getElementById('file-upload');
+        const previewOriginal = document.getElementById('preview-original');
+        const previewResult = document.getElementById('preview-result');
+        const placeholder = document.getElementById('placeholder');
         const resultPlaceholder = document.getElementById('result-placeholder');
-        const canvasOutput = document.getElementById('canvas-output');
-        const downloadBtn = document.getElementById('download-btn');
-
-        let originalImage = new Image();
-        let isImageLoaded = false;
-        let originalFileName = "image.png";
-
-        // --- Event Listeners ---
-        dropZone.addEventListener('click', () => fileInput.click());
         
+        const mirrorBtn = document.getElementById('mirror-btn');
+        const saveBtn = document.getElementById('save-btn');
+        
+        const canvasOriginal = document.getElementById('canvas-original');
+        const ctxOriginal = canvasOriginal.getContext('2d');
+        const canvasResult = document.getElementById('canvas-result');
+        const ctxResult = canvasResult.getContext('2d');
+
+        const originalInfo = document.getElementById('original-info');
+        const resultInfo = document.getElementById('result-info');
+
+        let originalImageObject = null;
+        let originalFileName = "image";
+
+        // 1. Drag & Drop Handling
+        dropZone.addEventListener('click', () => fileUpload.click());
+
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropZone.addEventListener(eventName, preventDefaults, false);
         });
 
-        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
 
-        dropZone.addEventListener('dragenter', () => dropZone.classList.add('drag-active'));
-        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-active'));
-        dropZone.addEventListener('drop', (e) => {
-            dropZone.classList.remove('drag-active');
-            handleFiles(e.dataTransfer.files);
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-active'), false);
         });
 
-        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
-
-        mirrorBtn.addEventListener('click', performMirror);
-        
-        downloadBtn.addEventListener('click', () => {
-            const link = document.createElement('a');
-            link.download = 'mirrored_' + originalFileName;
-            link.href = canvasOutput.toDataURL(fileInput.files[0]?.type || 'image/png', 1.0);
-            link.click();
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-active'), false);
         });
 
-        // --- Functions ---
+        dropZone.addEventListener('drop', handleDrop, false);
+        fileUpload.addEventListener('change', (e) => handleFiles(e.target.files), false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+
         function handleFiles(files) {
-            if (files.length === 0) return;
-            const file = files[0];
-            if (!file.type.startsWith('image/')) {
-                alert('請上傳圖片檔案');
-                return;
+            if (files.length > 0) {
+                const file = files[0];
+                if (!file.type.startsWith('image/')) {
+                    alert('請上傳圖片檔案 (JPG, PNG 等)');
+                    return;
+                }
+                originalFileName = file.name.split('.')[0];
+                loadImage(file);
             }
+        }
 
-            originalFileName = file.name;
+        // 2. Load Image & Draw to Hidden Canvas
+        function loadImage(file) {
             const reader = new FileReader();
             reader.onload = (e) => {
-                originalImage = new Image();
-                originalImage.onload = () => {
-                    // Show Original
-                    originalPreview.src = originalImage.src;
-                    originalPreview.classList.remove('hidden');
-                    emptyState.classList.add('hidden');
+                const img = new Image();
+                img.onload = () => {
+                    originalImageObject = img;
                     
-                    // Enable UI
-                    actionButtons.classList.remove('opacity-50', 'pointer-events-none');
-                    isImageLoaded = true;
+                    // 設定 Canvas 大小為圖片原始大小 (確保高畫質)
+                    canvasOriginal.width = img.width;
+                    canvasOriginal.height = img.height;
+                    ctxOriginal.drawImage(img, 0, 0);
+
+                    // 顯示預覽
+                    previewOriginal.src = canvasOriginal.toDataURL();
+                    previewOriginal.classList.remove('hidden');
+                    placeholder.classList.add('hidden');
                     
-                    // Auto mirror for convenience? Or let user click?
-                    // Let's mimic original app: User clicks or we can auto-trigger.
-                    // Let's auto-trigger for better UX.
-                    performMirror(); 
+                    // 顯示資訊
+                    originalInfo.textContent = `${img.width} x ${img.height} px`;
+
+                    // 啟用按鈕
+                    enableMirrorButton();
+                    
+                    // 重置右側
+                    resetResult();
                 };
-                originalImage.src = e.target.result;
+                img.src = e.target.result;
             };
             reader.readAsDataURL(file);
         }
 
-        function performMirror() {
-            if (!isImageLoaded) return;
-
-            const ctx = canvasOutput.getContext('2d');
-            
-            // Set canvas size to match image
-            canvasOutput.width = originalImage.width;
-            canvasOutput.height = originalImage.height;
-
-            // Flip Logic
-            ctx.save();
-            ctx.translate(originalImage.width, 0);
-            ctx.scale(-1, 1);
-            ctx.drawImage(originalImage, 0, 0);
-            ctx.restore();
-
-            // Show Result
-            canvasOutput.classList.remove('hidden');
-            resultPlaceholder.classList.add('hidden');
-            
-            // Enable Download
-            downloadBtn.disabled = false;
-            downloadBtn.classList.remove('bg-slate-200', 'text-slate-400');
-            downloadBtn.classList.add('bg-blue-600', 'text-white');
+        function enableMirrorButton() {
+            mirrorBtn.disabled = false;
+            mirrorBtn.classList.remove('bg-slate-100', 'text-slate-400', 'cursor-not-allowed');
+            mirrorBtn.classList.add('bg-blue-600', 'text-white', 'hover:bg-blue-700', 'shadow-md');
+            mirrorBtn.querySelector('.step-badge').classList.remove('bg-slate-400');
+            mirrorBtn.querySelector('.step-badge').classList.add('bg-white', 'text-blue-600');
         }
+
+        function resetResult() {
+            previewResult.classList.add('hidden');
+            resultPlaceholder.classList.remove('hidden');
+            resultPlaceholder.textContent = "等待執行鏡射...";
+            saveBtn.disabled = true;
+            saveBtn.classList.add('bg-green-600/50', 'text-white/80', 'cursor-not-allowed');
+            saveBtn.classList.remove('bg-green-600', 'text-white', 'hover:bg-green-500', 'shadow-lg');
+            resultInfo.textContent = "";
+        }
+
+        // 3. Mirror Logic
+        window.processMirror = function() {
+            if (!originalImageObject) return;
+
+            // 設定目標 Canvas 大小
+            canvasResult.width = originalImageObject.width;
+            canvasResult.height = originalImageObject.height;
+
+            // 核心鏡射邏輯
+            ctxResult.save();
+            ctxResult.translate(originalImageObject.width, 0); // 移動原點到右上角
+            ctxResult.scale(-1, 1); // X軸翻轉
+            ctxResult.drawImage(originalImageObject, 0, 0);
+            ctxResult.restore();
+
+            // 顯示結果
+            previewResult.src = canvasResult.toDataURL();
+            previewResult.classList.remove('hidden');
+            resultPlaceholder.classList.add('hidden');
+            resultInfo.textContent = `${originalImageObject.width} x ${originalImageObject.height} px`;
+
+            // 啟用存檔按鈕
+            enableSaveButton();
+        };
+
+        function enableSaveButton() {
+            saveBtn.disabled = false;
+            saveBtn.classList.remove('bg-green-600/50', 'text-white/80', 'cursor-not-allowed');
+            saveBtn.classList.add('bg-green-600', 'text-white', 'hover:bg-green-500', 'shadow-lg');
+        }
+
+        // 4. Save Logic
+        saveBtn.addEventListener('click', () => {
+            if (saveBtn.disabled) return;
+            
+            // 轉換 Canvas 為 Blob 並下載
+            canvasResult.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `${originalFileName}_mirrored.png`; // 預設存為 PNG 以確保品質
+                document.body.appendChild(a);
+                a.click();
+                
+                // 清理
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+            }, 'image/png'); // 使用 PNG 格式無損壓縮
+        });
+
     </script>
 </body>
 </html>
