@@ -365,6 +365,8 @@
             // For simplicity, let's replace the list like standard gallery apps or the original py script logic per folder
             currentFiles = validFiles;
             currentIndex = 0;
+            // Reset viewCount so the first image of new batch triggers the quote
+            viewCount = 0;
             loadFile(0);
         }
 
@@ -511,9 +513,9 @@ HYPERFOCAL  : ${hyperStr}`;
                 exposure: exposureText
             };
 
-            // Show Random Quote (Logic: Every 5th image viewed)
+            // Show Random Quote (Logic: First image OR Every 5th image viewed)
             viewCount++;
-            if (viewCount % 5 === 0) {
+            if (viewCount === 1 || (viewCount - 1) % 5 === 0) {
                 showRandomQuote();
             }
         }
