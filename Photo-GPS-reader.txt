@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>照片 GPS 讀取器 (V1.0 20251230)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入必要的函式庫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f1f5f9; }
+        .drag-active { border-color: #3b82f6 !important; background-color: #eff6ff !important; }
+        .table-row:nth-child(even) { background-color: #f8fafc; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-slate-800">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold flex items-center text-slate-800">
+                <span class="w-8 h-8 bg-red-500 text-white rounded-lg flex items-center justify-center mr-3 shadow-sm">
+                    <i class="fa-solid fa-location-dot"></i>
+                </span>
+                照片 GPS 讀取器 (V1.0 20251230)
+            </h1>
+            <a href="index.html" class="text-sm text-slate-500 hover:text-blue-600 transition-colors">
+                <i class="fa-solid fa-arrow-left mr-1"></i> 回首頁
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow p-4 md:p-8">
+        <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Left: Upload & Stats -->
+            <div class="lg:col-span-1 space-y-6">
+                
+                <!-- Upload Zone -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <h2 class="font-bold text-lg mb-4 flex items-center">
+                        <i class="fa-solid fa-cloud-arrow-up text-blue-500 mr-2"></i> 上傳照片
+                    </h2>
+                    <div id="drop-zone" class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all group min-h-[200px] flex flex-col justify-center items-center">
+                        <input type="file" id="file-input" multiple accept="image/jpeg,image/jpg" class="hidden">
+                        <div class="w-16 h-16 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-images"></i>
+                        </div>
+                        <p class="font-bold text-slate-700">拖放或點擊上傳照片</p>
+                        <p class="text-xs text-slate-400 mt-2">支援 JPG/JPEG (含 EXIF 資訊)</p>
+                    </div>
+                </div>
+
+                <!-- Stats Card -->
+                <div id="stats-card" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hidden">
+                    <h2 class="font-bold text-lg mb-4">統計資訊</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-slate-50 p-3 rounded-lg text-center">
+                            <p class="text-xs text-slate-500">總張數</p>
+                            <p class="text-xl font-bold text-slate-800" id="total-count">0</p>
+                        </div>
+                        <div class="bg-green-50 p-3 rounded-lg text-center">
+                            <p class="text-xs text-green-600">含 GPS</p>
+                            <p class="text-xl font-bold text-green-600" id="gps-count">0</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 space-y-3">
+                        <button id="download-excel" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center transition-colors shadow-sm">
+                            <i class="fa-solid fa-file-excel mr-2"></i> 下載 Excel 報表
+                        </button>
+                        <button id="download-zip" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center transition-colors shadow-sm">
+                            <i class="fa-solid fa-file-zipper mr-2"></i> 打包下載照片 (ZIP)
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right: Result List -->
+            <div class="lg:col-span-2 flex flex-col h-full min-h-[500px]">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 flex-grow flex flex-col overflow-hidden">
+                    
+                    <!-- Toolbar -->
+                    <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                        <h3 class="font-bold text-slate-700 flex items-center">
+                            <i class="fa-solid fa-list-check mr-2 text-slate-400"></i> 解析結果
+                        </h3>
+                        <button id="clear-btn" class="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded transition-colors hidden">
+                            清除列表
+                        </button>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="empty-state" class="flex-grow flex flex-col items-center justify-center text-slate-300 p-10">
+                        <i class="fa-solid fa-map-location-dot text-6xl mb-4 opacity-50"></i>
+                        <p>等待照片上傳...</p>
+                    </div>
+
+                    <!-- Table Header -->
+                    <div id="table-container" class="hidden flex-grow flex flex-col overflow-hidden">
+                        <div class="grid grid-cols-12 gap-4 p-3 bg-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                            <div class="col-span-1">縮圖</div>
+                            <div class="col-span-4">檔名</div>
+                            <div class="col-span-3">緯度 (Lat)</div>
+                            <div class="col-span-3">經度 (Lon)</div>
+                            <div class="col-span-1 text-center">狀態</div>
+                        </div>
+                        
+                        <!-- Table Body -->
+                        <div id="result-list" class="overflow-y-auto flex-grow custom-scrollbar">
+                            <!-- Items injected here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer: Contact Info -->
+    <footer class="bg-white border-t border-slate-200 py-8 mt-auto">
+        <div class="max-w-6xl mx-auto px-4 text-center">
+            <div class="inline-block bg-slate-50 rounded-xl px-8 py-4 border border-slate-100 shadow-sm">
+                <p class="font-bold text-slate-700 mb-1 text-lg">程式設計：賀禎禎攝影教室</p>
+                <p class="text-slate-500">連絡方式：<a href="mailto:hojenjen2018@gmail.com" class="text-blue-500 hover:text-blue-700 font-medium transition-colors">hojenjen2018@gmail.com</a></p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // DOM Elements
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const resultList = document.getElementById('result-list');
+        const emptyState = document.getElementById('empty-state');
+        const tableContainer = document.getElementById('table-container');
+        const statsCard = document.getElementById('stats-card');
+        const totalCountEl = document.getElementById('total-count');
+        const gpsCountEl = document.getElementById('gps-count');
+        const clearBtn = document.getElementById('clear-btn');
+        const btnExcel = document.getElementById('download-excel');
+        const btnZip = document.getElementById('download-zip');
+
+        // State
+        let processedData = []; // { file, name, lat, lon, hasGPS }
+
+        // Event Listeners
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => {
+            dropZone.addEventListener(e, (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+            });
+        });
+
+        dropZone.addEventListener('dragenter', () => dropZone.classList.add('drag-active'));
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-active'));
+        dropZone.addEventListener('drop', (e) => {
+            dropZone.classList.remove('drag-active');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+        clearBtn.addEventListener('click', () => {
+            processedData = [];
+            updateUI();
+            fileInput.value = '';
+        });
+
+        btnExcel.addEventListener('click', exportExcel);
+        btnZip.addEventListener('click', exportZip);
+
+        // Core Functions
+        async function handleFiles(files) {
+            const imageFiles = Array.from(files).filter(f => f.type === 'image/jpeg' || f.type === 'image/jpg');
+            
+            if (imageFiles.length === 0) {
+                alert('請上傳 JPG/JPEG 格式的照片！');
+                return;
+            }
+
+            // Process each file
+            for (const file of imageFiles) {
+                await processImage(file);
+            }
+            updateUI();
+        }
+
+        function processImage(file) {
+            return new Promise((resolve) => {
+                EXIF.getData(file, function() {
+                    const latData = EXIF.getTag(this, "GPSLatitude");
+                    const latRef = EXIF.getTag(this, "GPSLatitudeRef");
+                    const lonData = EXIF.getTag(this, "GPSLongitude");
+                    const lonRef = EXIF.getTag(this, "GPSLongitudeRef");
+
+                    let lat = null;
+                    let lon = null;
+                    let hasGPS = false;
+
+                    if (latData && latRef && lonData && lonRef) {
+                        lat = convertDMSToDD(latData, latRef);
+                        lon = convertDMSToDD(lonData, lonRef);
+                        hasGPS = true;
+                    }
+
+                    processedData.push({
+                        file: file,
+                        name: file.name,
+                        lat: lat ? lat.toFixed(6) : "無資料",
+                        lon: lon ? lon.toFixed(6) : "無資料",
+                        hasGPS: hasGPS
+                    });
+                    resolve();
+                });
+            });
+        }
+
+        function convertDMSToDD(dms, ref) {
+            let days = dms[0];
+            let minutes = dms[1];
+            let seconds = dms[2];
+            
+            // EXIF library sometimes returns numbers, sometimes Number objects
+            days = Number(days);
+            minutes = Number(minutes);
+            seconds = Number(seconds);
+
+            let dd = days + minutes / 60 + seconds / 3600;
+
+            if (ref === "S" || ref === "W") {
+                dd = dd * -1;
+            }
+            return dd;
+        }
+
+        function updateUI() {
+            // Stats
+            totalCountEl.textContent = processedData.length;
+            const gpsCount = processedData.filter(d => d.hasGPS).length;
+            gpsCountEl.textContent = gpsCount;
+
+            // Visibility
+            if (processedData.length > 0) {
+                emptyState.classList.add('hidden');
+                tableContainer.classList.remove('hidden');
+                statsCard.classList.remove('hidden');
+                clearBtn.classList.remove('hidden');
+            } else {
+                emptyState.classList.remove('hidden');
+                tableContainer.classList.add('hidden');
+                statsCard.classList.add('hidden');
+                clearBtn.classList.add('hidden');
+                resultList.innerHTML = '';
+                return;
+            }
+
+            // Render List (Clear and Re-render sorted by new)
+            resultList.innerHTML = '';
+            
+            processedData.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'grid grid-cols-12 gap-4 p-3 border-b border-slate-100 items-center hover:bg-slate-50 transition-colors table-row animate-fade-in';
+                
+                // Thumbnail
+                const url = URL.createObjectURL(item.file);
+                
+                const statusColor = item.hasGPS ? 'text-green-500' : 'text-slate-300';
+                const statusIcon = item.hasGPS ? 'fa-location-dot' : 'fa-ban';
+                
+                row.innerHTML = `
+                    <div class="col-span-1">
+                        <div class="w-10 h-10 rounded bg-slate-200 overflow-hidden relative border border-slate-200">
+                            <img src="${url}" class="w-full h-full object-cover" onload="URL.revokeObjectURL(this.src)">
+                        </div>
+                    </div>
+                    <div class="col-span-4 text-sm font-medium text-slate-700 truncate" title="${item.name}">${item.name}</div>
+                    <div class="col-span-3 text-sm font-mono text-slate-600">${item.lat}</div>
+                    <div class="col-span-3 text-sm font-mono text-slate-600">${item.lon}</div>
+                    <div class="col-span-1 text-center ${statusColor}">
+                        <i class="fa-solid ${statusIcon}"></i>
+                    </div>
+                `;
+                resultList.appendChild(row);
+            });
+            
+            // Auto scroll to bottom
+            resultList.scrollTop = resultList.scrollHeight;
+        }
+
+        function exportExcel() {
+            if (processedData.length === 0) return;
+
+            // Prepare data for SheetJS
+            const exportData = processedData.map(item => ({
+                "原始檔名": item.name,
+                "緯度 (Latitude)": item.lat,
+                "經度 (Longitude)": item.lon,
+                "狀態": item.hasGPS ? "有 GPS" : "無 GPS"
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "GPS Data");
+            
+            // Save file
+            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            saveAs(new Blob([wbout], { type: "application/octet-stream" }), "gps_report.xlsx");
+        }
+
+        function exportZip() {
+            if (processedData.length === 0) return;
+
+            const zip = new JSZip();
+            const folder = zip.folder("photos");
+            
+            // Add files to zip
+            processedData.forEach(item => {
+                folder.file(item.name, item.file);
+            });
+
+            btnZip.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> 打包中...';
+
+            zip.generateAsync({type:"blob"}).then(function(content) {
+                saveAs(content, "photos_with_gps.zip");
+                btnZip.innerHTML = '<i class="fa-solid fa-file-zipper mr-2"></i> 打包下載照片 (ZIP)';
+            });
+        }
+    </script>
+</body>
+</html>
