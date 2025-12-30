@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PNG 轉 JPG 批次轉換工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f3f4f6; }
+        .drag-active { border-color: #f97316 !important; background-color: #fff7ed !important; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+    <div class="min-h-screen flex flex-col items-center p-4 md:p-8">
+        
+        <!-- Header -->
+        <div class="text-center mb-8 max-w-2xl">
+            <h1 class="text-3xl font-bold text-slate-800 mb-2">
+                <i class="fa-solid fa-images text-orange-500 mr-2"></i>PNG 轉 JPG 批次轉換器
+            </h1>
+            <p class="text-slate-500">將多張 PNG 圖片轉換為 JPG，自動處理透明背景並壓縮</p>
+        </div>
+
+        <!-- Main Card -->
+        <div class="bg-white w-full max-w-5xl rounded-2xl shadow-xl overflow-hidden grid grid-cols-1 lg:grid-cols-3 border border-slate-200">
+            
+            <!-- Left: Controls & Upload -->
+            <div class="p-6 lg:p-8 bg-slate-50 border-b lg:border-b-0 lg:border-r border-slate-200 lg:col-span-1 flex flex-col h-full">
+                
+                <!-- Upload Zone -->
+                <div id="drop-zone" class="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center cursor-pointer hover:border-orange-400 hover:bg-orange-50 transition-all group flex flex-col items-center justify-center min-h-[200px]">
+                    <input type="file" id="file-input" multiple accept="image/png" class="hidden">
+                    <div class="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-cloud-arrow-up text-2xl text-orange-500"></i>
+                    </div>
+                    <p class="font-bold text-slate-700">點擊或拖放 PNG 圖片</p>
+                    <p class="text-xs text-slate-400 mt-1">支援批次上傳</p>
+                </div>
+
+                <!-- Settings -->
+                <div class="mt-6 space-y-4">
+                    <h3 class="font-bold text-slate-700 flex items-center">
+                        <i class="fa-solid fa-sliders mr-2 text-slate-400"></i>壓縮設定
+                    </h3>
+                    
+                    <div class="space-y-3">
+                        <label class="flex items-center p-3 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-orange-400 transition-colors relative overflow-hidden">
+                            <input type="radio" name="quality" value="0.95" class="accent-orange-500 w-4 h-4">
+                            <div class="ml-3">
+                                <div class="text-sm font-bold text-slate-700">高畫質 (Low Compression)</div>
+                                <div class="text-xs text-slate-500">品質 95% - 檔案較大</div>
+                            </div>
+                        </label>
+                        
+                        <label class="flex items-center p-3 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-orange-400 transition-colors ring-2 ring-orange-500 border-transparent">
+                            <input type="radio" name="quality" value="0.75" checked class="accent-orange-500 w-4 h-4">
+                            <div class="ml-3">
+                                <div class="text-sm font-bold text-slate-700">推薦 (Medium)</div>
+                                <div class="text-xs text-slate-500">品質 75% - 平衡最佳</div>
+                            </div>
+                        </label>
+
+                        <label class="flex items-center p-3 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-orange-400 transition-colors">
+                            <input type="radio" name="quality" value="0.3" class="accent-orange-500 w-4 h-4">
+                            <div class="ml-3">
+                                <div class="text-sm font-bold text-slate-700">最小檔案 (High Compression)</div>
+                                <div class="text-xs text-slate-500">品質 30% - 檔案最小</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="mt-auto pt-6">
+                    <button id="convert-btn" disabled class="w-full bg-slate-800 text-slate-400 font-bold py-3 px-4 rounded-xl flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-orange-600 hover:text-white hover:shadow-lg">
+                        <i class="fa-solid fa-bolt mr-2"></i> 開始轉換
+                    </button>
+                    <div id="stats-info" class="text-center text-xs text-slate-400 mt-2 h-4"></div>
+                </div>
+            </div>
+
+            <!-- Right: Preview & Results -->
+            <div class="p-6 lg:p-8 lg:col-span-2 bg-white flex flex-col h-full min-h-[500px]">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg text-slate-800 flex items-center">
+                        <i class="fa-solid fa-list-check mr-2 text-slate-400"></i>
+                        檔案列表 (<span id="file-count">0</span>)
+                    </h3>
+                    <button id="clear-btn" class="text-sm text-red-500 hover:text-red-700 hidden">
+                        清除全部
+                    </button>
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="flex-1 flex flex-col items-center justify-center text-slate-300 border-2 border-dashed border-slate-100 rounded-xl m-2">
+                    <i class="fa-regular fa-image text-5xl mb-4 opacity-50"></i>
+                    <p>等待圖片上傳...</p>
+                </div>
+
+                <!-- File List Grid -->
+                <div id="preview-grid" class="hidden grid grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto max-h-[500px] custom-scrollbar p-1 content-start">
+                    <!-- Cards will be injected here -->
+                </div>
+
+                <!-- Download Area -->
+                <div id="download-area" class="hidden mt-4 pt-4 border-t border-slate-100 animate-fade-in">
+                    <div class="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between">
+                        <div>
+                            <p class="text-green-800 font-bold text-sm"><i class="fa-solid fa-check-circle mr-2"></i>處理完成！</p>
+                            <p class="text-green-600 text-xs mt-1" id="save-report">總共節省空間：0 KB</p>
+                        </div>
+                        <button id="download-btn" class="bg-green-600 hover:bg-green-700 text-white text-sm font-bold py-2 px-4 rounded-lg shadow-sm transition-colors flex items-center">
+                            <i class="fa-solid fa-download mr-2"></i> 下載 ZIP
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 text-center">
+            <a href="index.html" class="text-slate-400 hover:text-slate-600 text-sm font-medium inline-flex items-center transition-colors">
+                <i class="fa-solid fa-arrow-left mr-2"></i> 回到工具箱首頁
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // DOM
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const fileCountEl = document.getElementById('file-count');
+        const convertBtn = document.getElementById('convert-btn');
+        const emptyState = document.getElementById('empty-state');
+        const previewGrid = document.getElementById('preview-grid');
+        const clearBtn = document.getElementById('clear-btn');
+        const downloadArea = document.getElementById('download-area');
+        const downloadBtn = document.getElementById('download-btn');
+        const statsInfo = document.getElementById('stats-info');
+        const saveReport = document.getElementById('save-report');
+        const radioOptions = document.querySelectorAll('input[name="quality"]');
+
+        let filesToProcess = [];
+        let processedBlobs = [];
+
+        // UI Logic for Radio Buttons styling
+        radioOptions.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                // Reset all
+                document.querySelectorAll('input[name="quality"]').forEach(r => {
+                    r.closest('label').classList.remove('ring-2', 'ring-orange-500', 'border-transparent');
+                });
+                // Highlight selected
+                e.target.closest('label').classList.add('ring-2', 'ring-orange-500', 'border-transparent');
+            });
+        });
+
+        // Drag & Drop
+        dropZone.addEventListener('click', () => fileInput.click());
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => {
+            dropZone.addEventListener(e, (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+            });
+        });
+        dropZone.addEventListener('dragenter', () => dropZone.classList.add('drag-active'));
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-active'));
+        dropZone.addEventListener('drop', (e) => {
+            dropZone.classList.remove('drag-active');
+            handleFiles(e.dataTransfer.files);
+        });
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+        clearBtn.addEventListener('click', () => {
+            filesToProcess = [];
+            processedBlobs = [];
+            updateUI();
+            downloadArea.classList.add('hidden');
+            convertBtn.disabled = true;
+            convertBtn.classList.remove('bg-orange-600', 'text-white');
+            convertBtn.classList.add('bg-slate-800', 'text-slate-400');
+            convertBtn.innerHTML = '<i class="fa-solid fa-bolt mr-2"></i> 開始轉換';
+            fileInput.value = '';
+        });
+
+        convertBtn.addEventListener('click', startConversion);
+        downloadBtn.addEventListener('click', downloadZip);
+
+        function handleFiles(files) {
+            const pngs = Array.from(files).filter(f => f.type === 'image/png');
+            if (pngs.length === 0) {
+                if (files.length > 0) alert('請上傳 PNG 圖片！');
+                return;
+            }
+
+            // Append new files
+            filesToProcess = [...filesToProcess, ...pngs];
+            updateUI();
+        }
+
+        function updateUI() {
+            fileCountEl.textContent = filesToProcess.length;
+            
+            if (filesToProcess.length > 0) {
+                emptyState.classList.add('hidden');
+                previewGrid.classList.remove('hidden');
+                clearBtn.classList.remove('hidden');
+                convertBtn.disabled = false;
+                convertBtn.classList.remove('bg-slate-800', 'text-slate-400');
+                convertBtn.classList.add('bg-orange-600', 'text-white');
+                
+                // Render Previews
+                previewGrid.innerHTML = '';
+                filesToProcess.forEach((file, index) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const div = document.createElement('div');
+                        div.className = 'relative group bg-slate-50 border rounded-lg overflow-hidden aspect-square';
+                        div.innerHTML = `
+                            <img src="${e.target.result}" class="w-full h-full object-contain p-2">
+                            <div class="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] p-1 truncate px-2">
+                                ${file.name}
+                            </div>
+                            <div class="absolute top-1 right-1 bg-orange-100 text-orange-600 text-xs px-1.5 rounded font-bold">PNG</div>
+                        `;
+                        previewGrid.appendChild(div);
+                    };
+                    reader.readAsDataURL(file);
+                });
+
+            } else {
+                emptyState.classList.remove('hidden');
+                previewGrid.classList.add('hidden');
+                clearBtn.classList.add('hidden');
+            }
+        }
+
+        async function startConversion() {
+            if (filesToProcess.length === 0) return;
+
+            convertBtn.disabled = true;
+            convertBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> 處理中...';
+            
+            processedBlobs = [];
+            let totalOriginalSize = 0;
+            let totalNewSize = 0;
+            const quality = parseFloat(document.querySelector('input[name="quality"]:checked').value);
+
+            for (let i = 0; i < filesToProcess.length; i++) {
+                const file = filesToProcess[i];
+                statsInfo.textContent = `正在處理: ${i+1} / ${filesToProcess.length}`;
+                
+                try {
+                    const blob = await convertToJpg(file, quality);
+                    const newName = file.name.replace(/\.png$/i, '.jpg');
+                    
+                    processedBlobs.push({ name: newName, blob: blob });
+                    
+                    totalOriginalSize += file.size;
+                    totalNewSize += blob.size;
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+
+            // Finished
+            statsInfo.textContent = '';
+            convertBtn.innerHTML = '<i class="fa-solid fa-check mr-2"></i> 轉換完成';
+            
+            // Calc stats
+            const savedKB = (totalOriginalSize - totalNewSize) / 1024;
+            const savedStr = savedKB > 1024 ? (savedKB/1024).toFixed(2) + ' MB' : savedKB.toFixed(1) + ' KB';
+            saveReport.textContent = `原始: ${(totalOriginalSize/1024/1024).toFixed(2)}MB → 壓縮後: ${(totalNewSize/1024/1024).toFixed(2)}MB (省下 ${savedStr})`;
+            
+            downloadArea.classList.remove('hidden');
+        }
+
+        function convertToJpg(file, quality) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                const url = URL.createObjectURL(file);
+                
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Fill white background (JPG no transparency)
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Draw image
+                    ctx.drawImage(img, 0, 0);
+                    
+                    canvas.toBlob((blob) => {
+                        URL.revokeObjectURL(url);
+                        if (blob) resolve(blob);
+                        else reject('Conversion failed');
+                    }, 'image/jpeg', quality);
+                };
+                
+                img.onerror = reject;
+                img.src = url;
+            });
+        }
+
+        function downloadZip() {
+            if (processedBlobs.length === 0) return;
+            
+            const zip = new JSZip();
+            const folder = zip.folder("jpg_converted");
+            
+            processedBlobs.forEach(item => {
+                folder.file(item.name, item.blob);
+            });
+            
+            downloadBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> 打包中...';
+            
+            zip.generateAsync({type:"blob"}).then(function(content) {
+                saveAs(content, "converted_images.zip");
+                downloadBtn.innerHTML = '<i class="fa-solid fa-download mr-2"></i> 下載 ZIP';
+            });
+        }
+    </script>
+</body>
+</html>
