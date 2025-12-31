@@ -606,7 +606,10 @@
             // 嘗試多種來源 (XP Tags 較難在 web 完美解析，優先讀 XMP/IPTC)
             let title = xmp.title || xmp.Title || iptc.ObjectName || tiff.ImageDescription || null;
             // 如果是 object (exifr 有時回傳 object for lang alt)，取預設
-            if (typeof title === 'object') title = title['x-default'] || Object.values(title)[0];
+            // 修正：增加 title && 判斷，因為 typeof null 也是 'object'
+            if (title && typeof title === 'object') {
+                title = title['x-default'] || Object.values(title)[0];
+            }
             
             addItem(g6_1, "Title", title);
             addItem(g6_1, "Caption", xmp.description ? (xmp.description['x-default'] || xmp.description) : iptc.CaptionRecord);
