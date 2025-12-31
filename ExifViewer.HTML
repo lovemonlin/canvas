@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>照片 EXIF 檢視程式 V1.1 / 賀禎禎攝影教室</title>
+    <title>照片 EXIF 檢視程式 V1.2 / 賀禎禎攝影教室</title>
     <!-- 引入 exifr 庫用於解析 EXIF/XMP/IPTC -->
     <script src="https://cdn.jsdelivr.net/npm/exifr/dist/full.umd.js"></script>
     <style>
@@ -22,6 +22,7 @@
         * {
             box-sizing: border-box;
             user-select: none; /* 防止文字被選取干擾拖曳 */
+            -webkit-tap-highlight-color: transparent; /* 移除手機點擊高亮 */
         }
 
         body {
@@ -31,6 +32,9 @@
             color: var(--text-main);
             font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
             height: 100vh;
+            /* 使用 dvh 解決手機瀏覽器網址列遮擋問題，回退 vh */
+            height: 100vh;
+            height: 100dvh; 
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -45,6 +49,7 @@
             justify-content: space-between;
             align-items: center;
             font-size: 14px;
+            flex-shrink: 0; /* 防止標題被壓縮 */
         }
 
         h1 {
@@ -52,6 +57,9 @@
             font-size: 16px;
             font-weight: normal;
             color: var(--text-dim);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         /* 主容器 */
@@ -70,12 +78,14 @@
             flex-direction: column;
             gap: 10px;
             min-width: 300px;
+            overflow: hidden; /* 防止內容溢出 */
         }
 
         .controls {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-shrink: 0;
         }
 
         .canvas-container {
@@ -88,6 +98,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            min-height: 0; /* Flexbox 巢狀滾動關鍵 */
         }
 
         .canvas-container:active {
@@ -110,6 +121,7 @@
             pointer-events: none;
             text-align: center;
             line-height: 1.5;
+            padding: 20px;
         }
 
         .nav-controls {
@@ -117,6 +129,7 @@
             justify-content: center;
             gap: 15px;
             align-items: center;
+            flex-shrink: 0;
         }
 
         .btn {
@@ -147,6 +160,7 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            flex-shrink: 0;
         }
 
         /* 右側：資料列表 */
@@ -157,6 +171,7 @@
             background-color: var(--bg-light);
             border: 1px solid var(--border);
             min-width: 350px;
+            overflow: hidden;
         }
 
         .toolbar {
@@ -164,6 +179,8 @@
             border-bottom: 1px solid var(--border);
             display: flex;
             gap: 10px;
+            flex-shrink: 0;
+            overflow-x: auto; /* 防止按鈕過多溢出 */
         }
 
         /* Treeview 模擬 */
@@ -191,13 +208,13 @@
         }
 
         .group-header {
-            padding: 8px 10px;
+            padding: 10px;
             background-color: #444;
             cursor: pointer;
             font-weight: bold;
             display: flex;
             align-items: center;
-            font-size: 13px;
+            font-size: 14px; /* 手機上字體稍大一點 */
         }
 
         .group-header:hover {
@@ -228,6 +245,7 @@
         .sub-group .group-header {
             padding-left: 25px;
             background-color: #383838;
+            font-size: 13px;
         }
         .sub-group .tree-item {
             padding-left: 45px;
@@ -235,7 +253,7 @@
 
         .tree-item {
             display: flex;
-            padding: 6px 10px 6px 20px;
+            padding: 8px 10px 8px 20px; /* 增加垂直間距方便點擊 */
             border-bottom: 1px solid #3a3a3a;
             font-size: 13px;
             align-items: center;
@@ -250,16 +268,17 @@
         }
 
         .col-label {
-            flex: 0 0 200px;
+            flex: 0 0 140px; /* 手機上標籤寬度縮小 */
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
 
         .col-eye {
-            flex: 0 0 40px;
+            flex: 0 0 30px;
             text-align: center;
             cursor: pointer;
+            font-size: 16px; /* 放大眼睛圖示 */
         }
 
         .col-value {
@@ -279,17 +298,18 @@
             position: absolute;
             background-color: #333;
             border: 1px solid #555;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.7);
             display: none;
             z-index: 1000;
             min-width: 150px;
+            border-radius: 4px;
         }
 
         #context-menu div {
-            padding: 8px 15px;
+            padding: 12px 15px; /* 加大點擊區域 */
             cursor: pointer;
             color: white;
-            font-size: 13px;
+            font-size: 14px;
         }
 
         #context-menu div:hover {
@@ -314,6 +334,54 @@
             z-index: 2000;
         }
 
+        /* === 響應式設計 (手機版適配) === */
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column; /* 改為上下排列 */
+                padding: 5px;
+                gap: 5px;
+            }
+
+            .left-panel {
+                flex: 0 0 45%; /* 上方預覽區佔 45% 高度 */
+                min-width: 0; /* 移除最小寬度限制 */
+                min-height: 0; /* 允許縮小 */
+                width: 100%;
+            }
+
+            .right-panel {
+                flex: 1; /* 下方列表佔滿剩餘空間 */
+                min-width: 0;
+                width: 100%;
+            }
+
+            .col-label {
+                flex: 0 0 110px; /* 手機上標籤更窄一點 */
+            }
+
+            .tree-item {
+                padding: 10px 5px 10px 15px; /* 加大觸控間距 */
+            }
+
+            .toolbar {
+                justify-content: space-between;
+            }
+
+            .toolbar .btn {
+                flex: 1; /* 按鈕平均分配寬度 */
+                text-align: center;
+                padding: 10px 5px;
+                font-size: 13px;
+            }
+
+            /* 調整標題字體大小 */
+            h1 {
+                font-size: 14px;
+            }
+            header div {
+                display: none; /* 手機版隱藏 Email 以節省空間 */
+            }
+        }
     </style>
 </head>
 <body>
@@ -330,7 +398,7 @@
                 <label style="font-size: 13px; display: flex; align-items: center;">
                     <input type="checkbox" id="chk-auto-rotate" checked> 自動轉正
                 </label>
-                <span style="font-size: 12px; color: var(--text-dim);">(雙擊重置縮放 / 拖曳移動)</span>
+                <span style="font-size: 12px; color: var(--text-dim);">(雙擊重置 / 拖曳移動)</span>
             </div>
 
             <div class="canvas-container" id="canvas-container">
@@ -418,8 +486,15 @@
         // 圖片縮放與拖曳
         container.addEventListener('wheel', handleZoom);
         container.addEventListener('mousedown', startDrag);
+        // 新增：觸控事件支援 (手機拖曳)
+        container.addEventListener('touchstart', startDrag, {passive: false});
+        
         window.addEventListener('mousemove', drag);
+        window.addEventListener('touchmove', drag, {passive: false});
+        
         window.addEventListener('mouseup', endDrag);
+        window.addEventListener('touchend', endDrag);
+        
         container.addEventListener('dblclick', resetZoom);
 
         // 右鍵選單
@@ -859,17 +934,29 @@
         }
 
         function startDrag(e) {
+            // 如果是觸控事件，阻止預設行為 (避免捲動頁面)
+            if (e.type === 'touchstart') e.preventDefault();
+            
             isDragging = true;
-            startX = e.clientX - panX;
-            startY = e.clientY - panY;
+            // 兼容 Mouse 與 Touch
+            const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+            
+            startX = clientX - panX;
+            startY = clientY - panY;
             container.style.cursor = "grabbing";
         }
 
         function drag(e) {
             if (!isDragging) return;
-            e.preventDefault();
-            panX = e.clientX - startX;
-            panY = e.clientY - startY;
+            // 觸控移動時防止畫面捲動
+            if (e.type === 'touchmove') e.preventDefault();
+            
+            const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+            
+            panX = clientX - startX;
+            panY = clientY - startY;
             updateTransform();
         }
 
@@ -921,4 +1008,3 @@
     </script>
 </body>
 </html>
-
