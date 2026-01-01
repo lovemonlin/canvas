@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>專業網圖工具 v1.0 (Web版)</title>
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f3f4f6; }
+        
+        /* 自訂捲軸樣式 */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* 動畫 */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
+    </style>
+</head>
+<body class="text-slate-800 h-screen overflow-hidden flex flex-col">
+
+    <div id="root" class="h-full flex flex-col"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // ----------------------------------------------------------------------
+        // 優化後的 Icon 組件 (解決 React DOM 衝突問題)
+        // ----------------------------------------------------------------------
+        const Icon = ({ name, size = 20, className = "" }) => {
+            const [svgHtml, setSvgHtml] = useState("");
+
+            useEffect(() => {
+                if (window.lucide && window.lucide.icons[name]) {
+                    // 使用 Lucide API 生成 SVG 字串，而不是直接操作 DOM
+                    const svg = window.lucide.icons[name].toSvg({
+                        width: size,
+                        height: size,
+                        class: className
+                    });
+                    setSvgHtml(svg);
+                }
+            }, [name, size, className]);
+
+            return <span dangerouslySetInnerHTML={{ __html: svgHtml }} className="inline-flex items-center" />;
+        };
+
+        // ----------------------------------------------------------------------
+        // 設定數據
+        // ----------------------------------------------------------------------
+        const PRINT_SIZES = [
+            { label: "沖洗 4X6 (2:3)", minW: 1200, minH: 800, ratio: 2/3 },
+            { label: "沖洗 5X7 (5:7)", minW: 1500, "minH": 2100, ratio: 5/7 },
+            { label: "沖洗 8X10 (4:5)", minW: 2400, "minH": 3000, ratio: 4/5 },
+            { label: "沖洗 8X12 (2:3)", minW: 2400, "minH": 3600, ratio: 2/3 },
+            { label: "沖洗 10x12 (5:6)", minW: 3000, "minH": 3600, ratio: 5/6 },
+            { label: "沖洗 11X14 (11:14)", minW: 3300, "minH": 4200, ratio: 11/14 },
+            { label: "沖洗 12X18 (2:3)", minW: 3600, "minH": 5400, ratio: 2/3 },
+            { label: "沖洗 16X20 (4:5)", minW: 4800, "minH": 6000, ratio: 4/5 },
+            { label: "沖洗 20X24 (5:6)", minW: 4800, "minH": 6000, ratio: 5/6 },
+        ];
+
+        const PURPOSE_SIZES = [
+            { label: "Facebook 貼文/傳照片 (最少 4000px)", size: 4000 },
+            { label: "Line 傳照片 (最少 2000px)", size: 2000 },
+        ];
+
+        // ----------------------------------------------------------------------
+        // 主應用程式
+        // ----------------------------------------------------------------------
+        function App() {
+            // 狀態管理
+            const [files, setFiles] = useState([]);
+            const [mode, setMode] = useState("percentage"); 
+            
+            // 設定值
+            const [percentageVal, setPercentageVal] = useState(70);
+            const [customPercentage, setCustomPercentage] = useState(80);
+            const [printSizeIdx, setPrintSizeIdx] = useState(0);
+            const [purposeIdx, setPurposeIdx] = useState(0);
+            const [qualityVal, setQualityVal] = useState(0.7);
+
+            // 處理狀態
+            const [isProcessing, setIsProcessing] = useState(false);
+            const [processedCount, setProcessedCount] = useState(0);
+            const [showWarning, setShowWarning] = useState(false); 
+            const [processType, setProcessType] = useState(""); 
+            const [resultStats, setResultStats] = useState(null); // 儲存處理結果統計
+            
+            // 預覽 Modal
+            const [previewImage, setPreviewImage] = useState(null);
+
+            // 拖曳處理
+            const handleDrop = (e) => {
+                e.preventDefault();
+                const droppedFiles = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+                if (droppedFiles.length > 0) {
+                    addFilesToState(droppedFiles);
+                }
+            };
+
+            const handleFileSelect = (e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                    addFilesToState(Array.from(e.target.files));
+                }
+            };
+
+            // 新增檔案並讀取尺寸
+            const addFilesToState = (newFilesList) => {
+                const newFileItems = newFilesList.map(file => {
+                    const id = Math.random().toString(36).substr(2, 9);
+                    const preview = URL.createObjectURL(file);
+                    return {
+                        file,
+                        id,
+                        preview,
+                        originalSize: file.size, 
+                        originalSizeStr: (file.size / 1024 / 1024).toFixed(2) + ' MB',
+                        dimensions: '讀取中...', // 初始狀態
+                        selected: false
+                    };
+                });
+
+                // 先加入列表，讓 UI 有反應
+                setFiles(prev => [...prev, ...newFileItems]);
+                setResultStats(null); 
+
+                // 非同步讀取圖片尺寸
+                newFileItems.forEach(item => {
+                    const img = new Image();
+                    img.src = item.preview;
+                    img.onload = () => {
+                        setFiles(prev => prev.map(f => {
+                            if (f.id === item.id) {
+                                return { ...f, dimensions: `${img.naturalWidth} x ${img.naturalHeight} px` };
+                            }
+                            return f;
+                        }));
+                    };
+                });
+            };
+
+            const handleDragOver = (e) => e.preventDefault();
+
+            // 檔案操作
+            const removeFile = (id) => setFiles(prev => prev.filter(f => f.id !== id));
+            const deleteSelected = () => setFiles(prev => prev.filter(f => !f.selected));
+            const toggleSelect = (id) => {
+                setFiles(prev => prev.map(f => f.id === id ? { ...f, selected: !f.selected } : f));
+            };
+            const toggleSelectAll = () => {
+                const allSelected = files.every(f => f.selected);
+                setFiles(prev => prev.map(f => ({ ...f, selected: !allSelected })));
+            };
+            const unselectAll = () => {
+                setFiles(prev => prev.map(f => ({ ...f, selected: false })));
+            };
+
+            // 核心邏輯
+            const processImages = async (actionType) => {
+                setIsProcessing(true);
+                setProcessedCount(0);
+                setResultStats(null);
+                
+                let totalSavedBytes = 0;
+                
+                for (let i = 0; i < files.length; i++) {
+                    const fileItem = files[i];
+                    // 為了 UI 更新，微小的延遲
+                    await new Promise(r => setTimeout(r, 10)); 
+                    const savedBytes = await processSingleImage(fileItem.file, actionType);
+                    
+                    if (savedBytes !== null) {
+                        totalSavedBytes += savedBytes;
+                    }
+                    setProcessedCount(i + 1);
+                }
+
+                setIsProcessing(false);
+                setShowWarning(false);
+                
+                // 顯示統計結果
+                const savedMB = (totalSavedBytes / 1024 / 1024).toFixed(2);
+                setResultStats({
+                    total: files.length,
+                    savedMB: savedMB
+                });
+            };
+
+            const processSingleImage = (file, actionType) => {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.src = URL.createObjectURL(file);
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        let width = img.width;
+                        let height = img.height;
+                        let outputQuality = 0.92; 
+
+                        // 縮放邏輯
+                        if (mode === 'percentage') {
+                            const p = percentageVal === 'custom' ? customPercentage : percentageVal;
+                            const ratio = p / 100;
+                            width = Math.floor(img.width * ratio);
+                            height = Math.floor(img.height * ratio);
+                            canvas.width = width;
+                            canvas.height = height;
+                            ctx.drawImage(img, 0, 0, width, height);
+                        } 
+                        else if (mode === 'quality') {
+                            canvas.width = width;
+                            canvas.height = height;
+                            ctx.drawImage(img, 0, 0, width, height);
+                            outputQuality = qualityVal; 
+                        }
+                        else if (mode === 'purpose') {
+                            const targetSize = PURPOSE_SIZES[purposeIdx].size;
+                            const longSide = Math.max(width, height);
+                            const scale = targetSize / longSide;
+                            width = Math.floor(img.width * scale);
+                            height = Math.floor(img.height * scale);
+                            canvas.width = width;
+                            canvas.height = height;
+                            ctx.drawImage(img, 0, 0, width, height);
+                        }
+                        else if (mode === 'print') {
+                            const setting = PRINT_SIZES[printSizeIdx];
+                            const isImgLandscape = img.width >= img.height;
+                            let targetW, targetH;
+
+                            if (isImgLandscape) {
+                                targetW = Math.max(setting.minW, setting.minH);
+                                targetH = Math.min(setting.minW, setting.minH);
+                            } else {
+                                targetW = Math.min(setting.minW, setting.minH);
+                                targetH = Math.max(setting.minW, setting.minH);
+                            }
+
+                            canvas.width = targetW;
+                            canvas.height = targetH;
+                            const targetRatio = targetW / targetH;
+                            const imgRatio = img.width / img.height;
+                            let drawW, drawH, offsetX, offsetY;
+
+                            if (imgRatio > targetRatio) {
+                                drawH = targetH;
+                                drawW = targetH * imgRatio;
+                                offsetY = 0;
+                                offsetX = (targetW - drawW) / 2;
+                            } else {
+                                drawW = targetW;
+                                drawH = targetW / imgRatio;
+                                offsetX = 0;
+                                offsetY = (targetH - drawH) / 2;
+                            }
+                            ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
+                        }
+
+                        // 輸出
+                        canvas.toBlob((blob) => {
+                            if (blob) {
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                let fileName = file.name;
+                                if (actionType === 'save_as') {
+                                    const namePart = fileName.substring(0, fileName.lastIndexOf('.'));
+                                    const extPart = fileName.substring(fileName.lastIndexOf('.'));
+                                    fileName = `${namePart}_resized${extPart}`;
+                                }
+                                a.download = fileName;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                                
+                                // 計算節省空間
+                                const saved = Math.max(0, file.size - blob.size);
+                                resolve(saved);
+                            } else {
+                                resolve(0);
+                            }
+                        }, 'image/jpeg', outputQuality);
+                    };
+                });
+            };
+
+            const triggerWarning = () => {
+                if (files.length === 0) return;
+                setProcessType('overwrite');
+                setShowWarning(true);
+            };
+
+            const selectedCount = files.filter(f => f.selected).length;
+            const progressPercent = files.length > 0 ? (processedCount / files.length) * 100 : 0;
+
+            return (
+                <div className="h-full flex flex-col items-center py-6 px-4">
+                    
+                    {/* Header */}
+                    <header className="flex-shrink-0 mb-4 text-center">
+                        <div className="flex flex-col items-center justify-center">
+                            <div className="flex items-center justify-center gap-2">
+                                <Icon name="images" size={32} className="text-blue-600" />
+                                <h1 className="text-2xl font-bold text-slate-800">專業網圖工具 v1.0</h1>
+                            </div>
+                            {/* 作者名稱修正 */}
+                            <p className="text-slate-500 text-sm mt-1 font-medium">賀禎禎攝影教室 hojenjen2018@gmail.com</p>
+                        </div>
+                    </header>
+
+                    {/* Main Container */}
+                    <main className="w-full max-w-6xl h-[85vh] bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row border border-slate-200">
+                        
+                        {/* Left: Input & List */}
+                        <div className="w-full md:w-7/12 border-r border-slate-100 flex flex-col h-full bg-slate-50/30">
+                            
+                            {/* Drop Zone */}
+                            <div 
+                                onDrop={handleDrop}
+                                onDragOver={handleDragOver}
+                                onClick={() => document.getElementById('fileInput').click()}
+                                className="flex-shrink-0 m-4 border-2 border-dashed border-blue-300 bg-blue-50/50 rounded-xl p-6 text-center cursor-pointer hover:bg-blue-100 transition-colors group relative"
+                            >
+                                <input type="file" id="fileInput" multiple accept="image/*" className="hidden" onChange={handleFileSelect} />
+                                <div className="flex justify-center mb-2">
+                                    <Icon name="upload-cloud" size={36} className="text-blue-400 group-hover:text-blue-600 transition-colors" />
+                                </div>
+                                <p className="text-blue-900 font-medium">拖曳照片至此，或點擊新增</p>
+                            </div>
+
+                            {/* Toolbar */}
+                            <div className="flex-shrink-0 px-4 py-3 bg-white border-y border-slate-100 flex items-center justify-between text-sm shadow-sm z-10">
+                                <div className="flex items-center gap-3">
+                                    <button onClick={toggleSelectAll} className="px-3 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors">
+                                        全選
+                                    </button>
+                                    <button onClick={unselectAll} className="px-3 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors">
+                                        取消全選
+                                    </button>
+                                    <span className="text-slate-400 border-l pl-3 ml-1">共 {files.length} 張</span>
+                                    {selectedCount > 0 && <span className="text-blue-600 font-bold">(已選 {selectedCount})</span>}
+                                </div>
+                                
+                                <div className="flex gap-2">
+                                    {selectedCount > 0 && (
+                                        <button 
+                                            onClick={deleteSelected}
+                                            className="flex items-center gap-1 bg-red-50 text-red-600 px-3 py-1.5 rounded-md hover:bg-red-100 transition-colors font-medium"
+                                        >
+                                            <Icon name="trash-2" size={16} />
+                                            刪除選取
+                                        </button>
+                                    )}
+                                    {files.length > 0 && (
+                                        <button onClick={() => {setFiles([]); setResultStats(null);}} className="text-slate-400 hover:text-slate-600 px-2">清空</button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* File List */}
+                            <div className="flex-grow overflow-y-auto custom-scrollbar p-2 bg-slate-50/30">
+                                {files.length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-slate-300 italic">
+                                        <p>尚未加入任何照片</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {files.map(f => (
+                                            <div 
+                                                key={f.id} 
+                                                onDoubleClick={() => setPreviewImage(f.preview)}
+                                                className={`flex items-center gap-3 p-2 rounded-lg group transition-all select-none cursor-pointer border shadow-sm ${f.selected ? 'bg-blue-50 border-blue-300' : 'bg-white border-slate-100 hover:border-blue-200'}`}
+                                            >
+                                                <div className="pl-2" onClick={(e) => e.stopPropagation()}>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={f.selected}
+                                                        onChange={() => toggleSelect(f.id)}
+                                                        className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                    />
+                                                </div>
+                                                <img src={f.preview} className="w-12 h-12 object-cover rounded-md bg-slate-200 flex-shrink-0 border border-slate-100" />
+                                                <div className="flex-grow min-w-0">
+                                                    <p className={`text-sm font-bold truncate ${f.selected ? 'text-blue-800' : 'text-slate-700'}`}>{f.file.name}</p>
+                                                    <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
+                                                        <span className="bg-slate-100 px-1.5 rounded">{f.originalSizeStr}</span>
+                                                        {/* 新增顯示尺寸 */}
+                                                        <span className="bg-slate-100 px-1.5 rounded">{f.dimensions}</span>
+                                                        <span className="hidden group-hover:inline-block text-blue-400 animate-fadeIn">● 雙擊預覽</span>
+                                                    </div>
+                                                </div>
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); removeFile(f.id); }} 
+                                                    className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                                                >
+                                                    <Icon name="x" size={18} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            
+                            {/* Tip Footer */}
+                            <div className="p-2 bg-slate-100 text-center text-xs text-slate-400 border-t border-slate-200">
+                                💡 提示：可隨時拖入更多檔案
+                            </div>
+                        </div>
+
+                        {/* Right: Controls */}
+                        <div className="w-full md:w-5/12 bg-white flex flex-col h-full overflow-hidden relative z-0">
+                            <div className="p-6 overflow-y-auto custom-scrollbar flex-grow">
+                                <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2 pb-2 border-b border-slate-100">
+                                    <Icon name="sliders-horizontal" size={24} />
+                                    縮圖設定
+                                </h2>
+
+                                <div className="space-y-4">
+                                    {/* Mode 1 */}
+                                    <label className={`block p-4 rounded-xl border-2 cursor-pointer transition-all ${mode === 'percentage' ? 'border-blue-500 bg-blue-50/30' : 'border-slate-100 hover:border-blue-200'}`}>
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <input type="radio" name="mode" value="percentage" checked={mode === 'percentage'} onChange={() => setMode('percentage')} className="w-5 h-5 text-blue-600" />
+                                            <span className="font-bold text-slate-700">依百分比縮小</span>
+                                        </div>
+                                        {mode === 'percentage' && (
+                                            <div className="pl-8 animate-fadeIn">
+                                                <select value={percentageVal} onChange={(e) => setPercentageVal(e.target.value === 'custom' ? 'custom' : Number(e.target.value))} className="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white mb-2">
+                                                    <option value={70}>縮小至 70%</option>
+                                                    <option value={50}>縮小至 50%</option>
+                                                    <option value={30}>縮小至 30%</option>
+                                                    <option value="custom">自訂比例</option>
+                                                </select>
+                                                {percentageVal === 'custom' && (
+                                                    <div className="flex items-center gap-2">
+                                                        <input type="number" min="1" max="100" value={customPercentage} onChange={(e) => setCustomPercentage(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-sm" />
+                                                        <span className="text-sm">%</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </label>
+
+                                    {/* Mode 2 */}
+                                    <label className={`block p-4 rounded-xl border-2 cursor-pointer transition-all ${mode === 'print' ? 'border-purple-500 bg-purple-50/30' : 'border-slate-100 hover:border-purple-200'}`}>
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <input type="radio" name="mode" value="print" checked={mode === 'print'} onChange={() => setMode('print')} className="w-5 h-5 text-purple-600" />
+                                            <span className="font-bold text-slate-700">照片沖洗</span>
+                                        </div>
+                                        {mode === 'print' && (
+                                            <div className="pl-8 animate-fadeIn">
+                                                <select value={printSizeIdx} onChange={(e) => setPrintSizeIdx(Number(e.target.value))} className="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
+                                                    {PRINT_SIZES.map((size, idx) => (
+                                                        <option key={idx} value={idx}>{size.label} - 最少 {size.minW}x{size.minH}</option>
+                                                    ))}
+                                                </select>
+                                                <p className="text-xs text-slate-500 mt-2">
+                                                    * 系統將自動判斷橫直幅，並進行適當的填滿裁切。
+                                                </p>
+                                            </div>
+                                        )}
+                                    </label>
+
+                                    {/* Mode 3 */}
+                                    <label className={`block p-4 rounded-xl border-2 cursor-pointer transition-all ${mode === 'purpose' ? 'border-green-500 bg-green-50/30' : 'border-slate-100 hover:border-green-200'}`}>
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <input type="radio" name="mode" value="purpose" checked={mode === 'purpose'} onChange={() => setMode('purpose')} className="w-5 h-5 text-green-600" />
+                                            <span className="font-bold text-slate-700">社群/通訊用途</span>
+                                        </div>
+                                        {mode === 'purpose' && (
+                                            <div className="pl-8 animate-fadeIn">
+                                                <select value={purposeIdx} onChange={(e) => setPurposeIdx(Number(e.target.value))} className="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
+                                                    {PURPOSE_SIZES.map((p, idx) => (
+                                                        <option key={idx} value={idx}>{p.label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
+                                    </label>
+
+                                    {/* Mode 4 */}
+                                    <label className={`block p-4 rounded-xl border-2 cursor-pointer transition-all ${mode === 'quality' ? 'border-orange-500 bg-orange-50/30' : 'border-slate-100 hover:border-orange-200'}`}>
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <input type="radio" name="mode" value="quality" checked={mode === 'quality'} onChange={() => setMode('quality')} className="w-5 h-5 text-orange-600" />
+                                            <span className="font-bold text-slate-700">純畫質壓縮(不減少畫素)</span>
+                                        </div>
+                                        {mode === 'quality' && (
+                                            <div className="pl-8 animate-fadeIn">
+                                                <select value={qualityVal} onChange={(e) => setQualityVal(Number(e.target.value))} className="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
+                                                    <option value={0.7}>畫質 70% (推薦)</option>
+                                                    <option value={0.5}>畫質 50% (小檔)</option>
+                                                    <option value={0.3}>畫質 30% (極限)</option>
+                                                </select>
+                                            </div>
+                                        )}
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* Status & Actions Area (Fixed Bottom) */}
+                            <div className="flex-shrink-0 p-6 border-t border-slate-200 bg-slate-50/50">
+                                
+                                {/* Progress Bar / Stats */}
+                                <div className="mb-4">
+                                    {isProcessing ? (
+                                        <div>
+                                            <div className="flex justify-between text-xs font-bold text-blue-600 mb-1">
+                                                <span>處理中...</span>
+                                                <span>{processedCount} / {files.length}</span>
+                                            </div>
+                                            <div className="w-full bg-slate-200 rounded-full h-2.5">
+                                                <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style={{ width: `${progressPercent}%` }}></div>
+                                            </div>
+                                        </div>
+                                    ) : resultStats ? (
+                                        <div className="bg-green-100 border border-green-200 text-green-800 p-3 rounded-lg text-sm text-center animate-fadeIn">
+                                            <p className="font-bold">🎉 處理完成！</p>
+                                            <p>共處理 {resultStats.total} 張照片，節省空間 <span className="text-lg font-bold">{resultStats.savedMB} MB</span></p>
+                                        </div>
+                                    ) : (
+                                        <div className="text-xs text-slate-400 text-center h-5">準備就緒</div>
+                                    )}
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button 
+                                        onClick={() => { if(files.length > 0) processImages('save_as'); }}
+                                        disabled={files.length === 0 || isProcessing}
+                                        className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white py-3.5 px-4 rounded-xl font-bold shadow-lg shadow-slate-300 hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <Icon name="download" size={20} />
+                                        另存新檔
+                                    </button>
+                                    
+                                    <button 
+                                        onClick={triggerWarning}
+                                        disabled={files.length === 0 || isProcessing}
+                                        className="flex items-center justify-center gap-2 bg-white text-red-600 border-2 border-red-100 hover:border-red-200 hover:bg-red-50 py-3.5 px-4 rounded-xl font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <Icon name="file-warning" size={20} />
+                                        原檔縮小
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+
+                    {/* Warning Modal */}
+                    {showWarning && (
+                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                            <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl transform transition-all scale-100 animate-fadeIn">
+                                <div className="flex items-center gap-3 text-red-600 mb-4">
+                                    <Icon name="alert-triangle" size={32} />
+                                    <h3 className="text-xl font-bold">警告：此動作不可復原</h3>
+                                </div>
+                                <p className="text-slate-600 mb-6">
+                                    您即將執行「原照片縮小」。
+                                    <br/><br/>
+                                    這將會下載與原檔相同檔名的照片。若您選擇儲存到同一資料夾並取代，原圖將會永久遺失。
+                                </p>
+                                <div className="flex gap-3 justify-end">
+                                    <button 
+                                        onClick={() => setShowWarning(false)}
+                                        className="px-5 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium"
+                                    >
+                                        取消
+                                    </button>
+                                    <button 
+                                        onClick={handleConfirmOverwrite}
+                                        className="px-5 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-bold"
+                                    >
+                                        確定執行
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Preview Modal (New Feature) */}
+                    {previewImage && (
+                        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setPreviewImage(null)}>
+                            <button 
+                                onClick={() => setPreviewImage(null)}
+                                className="absolute top-4 right-4 text-white hover:text-slate-300 bg-white/10 p-2 rounded-full backdrop-blur-sm"
+                            >
+                                <Icon name="x" size={32} />
+                            </button>
+                            <img 
+                                src={previewImage} 
+                                className="max-w-full max-h-full object-contain rounded shadow-2xl" 
+                                onClick={(e) => e.stopPropagation()} // 點擊圖片不關閉
+                            />
+                        </div>
+                    )}
+
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
